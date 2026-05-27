@@ -190,25 +190,22 @@
     </style>
 
     <script type="module">
-        // [1] 구글 파이어베이스 모듈 가져오기 (가장 상단 고정)
+        // [수정 포인트 1] 브라우저 환경에 맞는 CDN 주소로 통일하고 필수 기능(getFirestore 등)을 명확하게 로드했습니다.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "firebase/app";
-        // TODO: Add SDKs for Firebase products that you want to use
-        // https://firebase.google.com/docs/web/setup#available-libraries
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Your web app's Firebase configuration
+        // 파이어베이스 설정 정보
         const firebaseConfig = {
-          apiKey: "AIzaSyDJUxYwL2yUq0aGTFH_DFeCNNNVE8henMM",
-          authDomain: "food26-61be8.firebaseapp.com",
-          projectId: "food26-61be8",
-          storageBucket: "food26-61be8.firebasestorage.app",
-          messagingSenderId: "503631542022",
-          appId: "1:503631542022:web:9119acf97d8937fbf9d087"
-};
+            apiKey: "AIzaSyDJUxYwL2yUq0aGTFH_DFeCNNNVE8henMM",
+            authDomain: "food26-61be8.firebaseapp.com",
+            projectId: "food26-61be8",
+            storageBucket: "food26-61be8.firebasestorage.app",
+            messagingSenderId: "503631542022",
+            appId: "1:503631542022:web:9119acf97d8937fbf9d087"
+        };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
         // [3] 나이스 교육청 급식 API 기본 설정
@@ -228,7 +225,7 @@ const app = initializeApp(firebaseConfig);
 
         document.getElementById('month-display').innerText = `${yyyy}년 ${mm}월`;
 
-        // [5] 나이스 API URL 조립 (&pSize=100으로 한 달 치 다 가져옴)
+        // [5] 나이스 API URL 조립
         const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${ATPT_OFCDC_SC_CODE}&SD_SCHUL_CODE=${SD_SCHUL_CODE}&MLSV_FROM_YMD=${fromDate}&MLSV_TO_YMD=${toDate}&pSize=100`;
 
         const mealFeedEl = document.getElementById('meal-feed');
@@ -350,7 +347,6 @@ const app = initializeApp(firebaseConfig);
             }
 
             try {
-                // 구글 클라우드의 'comments' 저장 폴더에 저장 시도
                 await addDoc(collection(db, "comments"), {
                     commentId: commentId,
                     text: text,
@@ -359,7 +355,7 @@ const app = initializeApp(firebaseConfig);
                 });
 
                 inputEl.value = '';
-                loadServerComments(commentId); // 정상 등록 시 목록 새로고침
+                loadServerComments(commentId); 
             } catch (e) {
                 console.error("Error adding document: ", e);
             }
@@ -371,7 +367,6 @@ const app = initializeApp(firebaseConfig);
             if (!listEl) return;
 
             try {
-                // 해당 ID 조건과 일치하는 문서만 시간순 정렬 쿼리 생성
                 const q = query(
                     collection(db, "comments"), 
                     where("commentId", "==", commentId),
@@ -388,7 +383,7 @@ const app = initializeApp(firebaseConfig);
 
                 querySnapshot.forEach((docSnap) => {
                     const comment = docSnap.data();
-                    const docId = docSnap.id; // 개별 댓글 데이터 고유 일련번호(삭제용 키)
+                    const docId = docSnap.id; 
 
                     const li = document.createElement('li');
                     li.classList.add('comment-item');
@@ -403,7 +398,6 @@ const app = initializeApp(firebaseConfig);
                         <span class="delete-btn" style="cursor:pointer; color:#ef4444; font-weight:bold;">❌</span>
                     `;
 
-                    // ❌ 버튼 클릭 시 구글 서버 단독 데이터 영구 삭제 함수 연동
                     li.querySelector('.delete-btn').addEventListener('click', () => {
                         deleteServerComment(commentId, docId);
                     });
@@ -422,7 +416,7 @@ const app = initializeApp(firebaseConfig);
 
             try {
                 await deleteDoc(doc(db, "comments", docId));
-                loadServerComments(commentId); // 삭제 완료 후 목록 새로 갱신
+                loadServerComments(commentId); 
             } catch (e) {
                 console.error("Error removing document: ", e);
                 alert("삭제 권한이 없거나 내부 오류가 발생했습니다.");
