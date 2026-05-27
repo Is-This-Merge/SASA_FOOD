@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이번 달 학교 급식 리뷰 피드</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Malgun Gothic', sans-serif;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 650px; /* 피드 스타일을 위해 폭을 조금 줄임 */
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .header .month-text {
+            font-size: 1.2rem;
+            color: #3b82f6;
+            font-weight: bold;
+        }
+
+        /* 날짜별 카드 (세로 피드 스타일) */
+        .meal-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .meal-card {
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            padding: 25px;
+            border-left: 6px solid #cbd5e1;
+        }
+
+        .meal-card.today {
+            border-left-color: #3b82f6;
+            background-color: #f8fafc;
+        }
+
+        .meal-date {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #1e293b;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .today-badge {
+            background-color: #3b82f6;
+            color: white;
+            font-size: 0.8rem;
+            padding: 3px 8px;
+            border-radius: 12px;
+        }
+
+        /* 아침, 점심, 저녁 구역 */
+        .meal-section {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .meal-section:last-of-type {
+            margin-bottom: 0;
+        }
+
+        .meal-type {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #2563eb;
+            background-color: #dbeafe;
+            padding: 3px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
+        .menu-list {
+            list-style: none;
+            color: #475569;
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        /* 💬 댓글 시스템 스타일 */
+        .comment-box {
+            border-top: 1px solid #f1f5f9;
+            padding-top: 12px;
+            margin-top: 10px;
+        }
+
+        /* 댓글 리스트 */
+        .comment-list {
+            list-style: none;
+            margin-bottom: 10px;
+        }
+
+        .comment-item {
+            font-size: 0.9rem;
+            color: #334155;
+            background: #f8fafc;
+            padding: 6px 10px;
+            border-radius: 6px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .comment-item .stars {
+            color: #eab308;
+            font-size: 0.8rem;
+        }
+
+        /* 댓글 입력창 구역 */
+        .comment-input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .comment-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .comment-input:focus {
+            border-color: #3b82f6;
+        }
+
+        .star-select {
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: white;
+            color: #eab308;
+            font-weight: bold;
+        }
+
+        .comment-btn {
+            background-color: #1e293b;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .comment-btn:hover {
+            background-color: #334155;
+        }
+
+        .state-msg {
+            text-align: center;
+            color: #94a3b8;
+            font-style: italic;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🍽️ 이번 달 급식 리뷰 피드</h1>
+            <div id="month-display" class="month-text">0000년 00월</div>
+        </div>
+        
+        <div id="meal-feed" class="meal-feed">
+            <div class="state-msg">급식 정보를 동기화하는 중입니다...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "167317ab910f421c85c88e20e02d508e"; 
+        const ATPT_OFCDC_SC_CODE = "I10"; 
+        const SD_SCHUL_CODE = "9300181";   
+
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        
+        const fromDate = `${yyyy}${mm}01`; 
+        const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
+        const toDate = `${yyyy}${mm}${String(lastDay).padStart(2, '0')}`; 
+        const todayStr = `${yyyy}${mm}${String(today.getDate()).padStart(2, '0')}`;
+
+        document.getElementById('month-display').innerText = `${yyyy}년 ${mm}월`;
+
+        const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${ATPT_OFCDC_SC_CODE}&SD_SCHUL_CODE=${SD_SCHUL_CODE}&MLSV_FROM_YMD=${fromDate}&MLSV_TO_YMD=${toDate}&pSize=100`;
+
+        const mealFeedEl = document.getElementById('meal-feed');
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (!data.mealServiceDietInfo) {
+                    mealFeedEl.innerHTML = `<div class="state-msg">등록된 급식 정보가 없습니다. 😴</div>`;
+                    return;
+                }
+
+                const mealRows = data.mealServiceDietInfo[1].row;
+                mealFeedEl.innerHTML = ''; 
+
+                // 1. 데이터 날짜별 그룹화
+                const groupedMeals = {};
+                mealRows.forEach(row => {
+                    const mealDate = row.MLSV_YMD;
+                    if (!groupedMeals[mealDate]) groupedMeals[mealDate] = [];
+                    groupedMeals[mealDate].push({
+                        type: row.MMEAL_SC_NM, 
+                        menu: row.DDISH_NM
+                    });
+                });
+
+                // 2. 날짜별 피드 생성 (최신순 정렬을 원하시면 .sort().reverse()를 쓰셔도 됩니다)
+                Object.keys(groupedMeals).sort().forEach(mealDate => {
+                    const meals = groupedMeals[mealDate]; 
+                    const displayDate = `${mealDate.substring(4,6)}월 ${mealDate.substring(6,8)}일`;
+
+                    const card = document.createElement('div');
+                    card.classList.add('meal-card');
+                    if (mealDate === todayStr) card.classList.add('today');
+
+                    let allMealsHtml = '';
+                    
+                    // 각 식사(조식/중식/석식) 구역 생성
+                    meals.forEach((meal, index) => {
+                        const cleanMenu = meal.menu.replace(/[0-9]+\./g, '');
+                        const menuItems = cleanMenu.split('<br/>');
+                        
+                        let menuListHtml = '';
+                        menuItems.forEach(item => {
+                            if(item.trim()) menuListHtml += `<li>• ${item.trim()}</li>`;
+                        });
+
+                        // 댓글 구분을 위한 고유 ID 생성 (예: 20260527-중식)
+                        const commentId = `${mealDate}-${meal.type}`;
+
+                        allMealsHtml += `
+                            <div class="meal-section">
+                                <span class="meal-type">${meal.type}</span>
+                                <ul class="menu-list">
+                                    ${menuListHtml}
+                                </ul>
+                                
+                                <div class="comment-box">
+                                    <ul class="comment-list" id="list-${commentId}">
+                                        </ul>
+                                    <div class="comment-input-group">
+                                        <select class="star-select" id="star-${commentId}">
+                                            <option value="5">★ 5</option>
+                                            <option value="4">★ 4</option>
+                                            <option value="3">★ 3</option>
+                                            <option value="2">★ 2</option>
+                                            <option value="1">★ 1</option>
+                                        </select>
+                                        <input type="text" class="comment-input" id="input-${commentId}" placeholder="급식 리뷰를 남겨주세요!">
+                                        <button class="comment-btn" onclick="addComment('${commentId}')">등록</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    card.innerHTML = `
+                        <div class="meal-date">
+                            <span>📅 ${displayDate}</span>
+                            ${mealDate === todayStr ? '<span class="today-badge">오늘</span>' : ''}
+                        </div>
+                        ${allMealsHtml}
+                    `;
+
+                    mealFeedEl.appendChild(card);
+
+                    // 카드가 화면에 그려진 후, 해당 식사들의 기존 댓글 불러오기
+                    meals.forEach(meal => {
+                        const commentId = `${mealDate}-${meal.type}`;
+                        loadComments(commentId);
+                    });
+                });
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                mealFeedEl.innerHTML = `<div class="state-msg" style="color: #ef4444;">데이터를 동기화하지 못했습니다.</div>`;
+            });
+
+        // 3. 댓글 등록 함수
+        function addComment(commentId) {
+            const inputEl = document.getElementById(`input-${commentId}`);
+            const starEl = document.getElementById(`star-${commentId}`);
+            const text = inputEl.value.trim();
+            const star = starEl.value;
+
+            if (!text) {
+                alert("리뷰 내용을 입력해주세요!");
+                return;
+            }
+
+            // 기존 로컬스토리지 데이터 가져오기
+            let comments = JSON.parse(localStorage.getItem(commentId)) || [];
+            
+            // 새 댓글 객체 생성
+            const newComment = { text: text, star: star };
+            comments.push(newComment);
+
+            // 로컬스토리지에 재저장
+            localStorage.setItem(commentId, JSON.stringify(comments));
+
+            // 입력창 비우기
+            inputEl.value = '';
+
+            // 댓글 목록 새로고침
+            loadComments(commentId);
+        }
+
+        // 4. 댓글 불러오기 함수
+        function loadComments(commentId) {
+            const listEl = document.getElementById(`list-${commentId}`);
+            if (!listEl) return;
+
+            let comments = JSON.parse(localStorage.getItem(commentId)) || [];
+            listEl.innerHTML = ''; // 기존 목록 비우기
+
+            comments.forEach(comment => {
+                const li = document.createElement('li');
+                li.classList.add('comment-item');
+                
+                // 별점 개수만큼 ★ 그리기
+                const starString = '★'.repeat(comment.star) + '☆'.repeat(5 - comment.star);
+
+                li.innerHTML = `
+                    <span>${comment.text}</span>
+                    <span class="stars">${starString}</span>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>
