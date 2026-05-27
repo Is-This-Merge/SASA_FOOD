@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>이번 달 학교 급식 리뷰 피드</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+
     <style>
         * {
             box-sizing: border-box;
@@ -28,7 +31,7 @@
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .header h1 {
@@ -37,16 +40,43 @@
             margin-bottom: 8px;
         }
 
-        .header .month-text {
-            font-size: 1.2rem;
-            color: #3b82f6;
-            font-weight: bold;
+        /* 📅 날짜 선택기(달력) 스타일 스타일링 */
+        .search-box {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 25px;
+            background: white;
+            padding: 12px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
         }
 
-        .meal-feed {
-            display: flex;
-            flex-direction: column;
-            gap: 25px;
+        .search-box label {
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: #475569;
+        }
+
+        .date-picker {
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            color: #1e293b;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .date-picker:focus {
+            border-color: #3b82f6;
+        }
+
+        /* 🎹 Swiper 슬라이더 컨테이너 크기 설정 */
+        .swiper {
+            width: 100%;
+            padding-bottom: 30px !important; /* 아래쪽 페이지네이션 공간 */
         }
 
         .meal-card {
@@ -55,8 +85,11 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
             padding: 25px;
             border-left: 6px solid #cbd5e1;
+            height: auto;
+            align-self: flex-start;
         }
 
+        /* 오늘 날짜 카드 하이라이트 */
         .meal-card.today {
             border-left-color: #3b82f6;
             background-color: #f8fafc;
@@ -186,11 +219,35 @@
             color: #94a3b8;
             font-style: italic;
             font-size: 1.1rem;
+            padding: 40px 0;
         }
     </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🍽️ 급식 리뷰 스와이프 피드</h1>
+        </div>
+
+        <div class="search-box">
+            <label for="date-selector">📆 날짜 이동:</label>
+            <input type="date" id="date-selector" class="date-picker">
+        </div>
+        
+        <div class="swiper">
+            <div class="swiper-wrapper" id="meal-feed">
+                <div class="state-msg">급식 정보를 동기화하는 중입니다...</div>
+            </div>
+            <div class="swiper-button-next"></div>
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-pagination"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
     <script type="module">
-        // [수정 포인트 1] 브라우저 환경에 맞는 CDN 주소로 통일하고 필수 기능(getFirestore 등)을 명확하게 로드했습니다.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -204,33 +261,33 @@
             appId: "1:503631542022:web:9119acf97d8937fbf9d087"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // [3] 나이스 교육청 급식 API 기본 설정
         const API_KEY = "167317ab910f421c85c88e20e02d508e"; 
         const ATPT_OFCDC_SC_CODE = "I10"; 
         const SD_SCHUL_CODE = "9300181";   
 
-        // [4] 날짜 자동 계산 로직
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
         
         const fromDate = `${yyyy}${mm}01`; 
         const lastDay = new Date(yyyy, today.getMonth() + 1, 0).getDate();
         const toDate = `${yyyy}${mm}${String(lastDay).padStart(2, '0')}`; 
-        const todayStr = `${yyyy}${mm}${String(today.getDate()).padStart(2, '0')}`;
+        const todayStr = `${yyyy}${mm}${dd}`;
 
-        document.getElementById('month-display').innerText = `${yyyy}년 ${mm}월`;
+        // 달력 기본값을 오늘 날짜로 셋팅 (YYYY-MM-DD 형식)
+        const dateSelector = document.getElementById('date-selector');
+        dateSelector.value = `${yyyy}-${mm}-${dd}`;
 
-        // [5] 나이스 API URL 조립
         const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${ATPT_OFCDC_SC_CODE}&SD_SCHUL_CODE=${SD_SCHUL_CODE}&MLSV_FROM_YMD=${fromDate}&MLSV_TO_YMD=${toDate}&pSize=100`;
 
         const mealFeedEl = document.getElementById('meal-feed');
+        let swiperInstance = null; // Swiper 인스턴스를 저장할 변수
+        let dateToSlideIndex = {}; // 날짜문자열(예:20260527)과 슬라이드 번호(index) 매핑 테이블
 
-        // [6] 나이스 서버에서 급식 정보 가져와서 화면에 그리기
         fetch(url)
             .then(response => response.json())
             .then(data => {
@@ -242,7 +299,6 @@
                 const mealRows = data.mealServiceDietInfo[1].row;
                 mealFeedEl.innerHTML = ''; 
 
-                // 날짜별 그룹화 작업
                 const groupedMeals = {};
                 mealRows.forEach(row => {
                     const mealDate = row.MLSV_YMD;
@@ -253,10 +309,23 @@
                     });
                 });
 
-                // 날짜 오름차순으로 정렬하여 카드 배치
-                Object.keys(groupedMeals).sort().forEach(mealDate => {
+                const sortedDates = Object.keys(groupedMeals).sort();
+                let todaySlideIndex = 0; // 오늘 날짜 카드가 들어갈 슬라이드 순번 위치 기억용
+
+                sortedDates.forEach((mealDate, index) => {
                     const meals = groupedMeals[mealDate]; 
                     const displayDate = `${mealDate.substring(4,6)}월 ${mealDate.substring(6,8)}일`;
+
+                    // 🗺️ 날짜와 슬라이드 인덱스 번호를 기록해 둡니다. (달력 이동용)
+                    dateToSlideIndex[mealDate] = index;
+
+                    if (mealDate === todayStr) {
+                        todaySlideIndex = index; // 오늘 날짜의 슬라이드 번호 확정
+                    }
+
+                    // Swiper 규칙: 슬라이드는 무조건 'swiper-slide' 클래스 명을 가진 박스여야 합니다.
+                    const slide = document.createElement('div');
+                    slide.classList.add('swiper-slide');
 
                     const card = document.createElement('div');
                     card.classList.add('meal-card');
@@ -264,7 +333,6 @@
 
                     let allMealsHtml = '';
                     
-                    // 조식, 중식, 석식별 구역 레이아웃 구성
                     meals.forEach((meal) => {
                         const cleanMenu = meal.menu.replace(/[0-9]+\./g, '');
                         const menuItems = cleanMenu.split('<br/>');
@@ -274,7 +342,6 @@
                             if(item.trim()) menuListHtml += `<li>• ${item.trim()}</li>`;
                         });
 
-                        // 댓글 데이터베이스 조회를 위한 날짜식별 고유 ID 조합
                         const commentId = `${mealDate}-${meal.type}`;
 
                         allMealsHtml += `
@@ -312,16 +379,42 @@
                         ${allMealsHtml}
                     `;
 
-                    mealFeedEl.appendChild(card);
+                    slide.appendChild(card);
+                    mealFeedEl.appendChild(slide);
 
-                    // 화면 배치가 끝난 식사 구역들의 실제 서버 저장된 리뷰들 불러오기 호출
                     meals.forEach(meal => {
                         const commentId = `${mealDate}-${meal.type}`;
                         loadServerComments(commentId);
                     });
                 });
 
-                // 동적 생성된 등록 버튼들에 클릭 연동 이벤트 추가
+                // 🎹 [중요] 카드가 완전히 화면에 다 그려진 후 Swiper 작동 엔진을 켭니다.
+                swiperInstance = new Swiper('.swiper', {
+                    direction: 'horizontal',
+                    loop: false, // 달력 이동 로직의 정확성을 위해 false 설정
+                    initialSlide: todaySlideIndex, // 🌟 핵심: 접속하자마자 오늘 날짜 카드로 포커싱 활성화
+                    spaceBetween: 30, // 카드와 카드 사이 공백 크기
+                    pagination: {
+                        el: '.swiper-pagination',
+                        clickable: true,
+                    },
+                    navigation: {
+                        nextEl: '.swiper-button-next',
+                        prevEl: '.swiper-button-prev',
+                    },
+                });
+
+                // 슬라이드가 넘어갈 때마다 상단 달력의 날짜도 자동으로 변경해 주는 기능 추가
+                swiperInstance.on('slideChange', () => {
+                    const activeIndex = swiperInstance.activeIndex;
+                    const activeDateStr = sortedDates[activeIndex]; // 현재 보이는 슬라이드의 YYYYMMDD 값 추출
+                    
+                    if(activeDateStr) {
+                        const formattedDate = `${activeDateStr.substring(0,4)}-${activeDateStr.substring(4,6)}-${activeDateStr.substring(6,8)}`;
+                        dateSelector.value = formattedDate;
+                    }
+                });
+
                 document.querySelectorAll('.comment-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const commentId = e.target.getAttribute('data-id');
@@ -334,7 +427,19 @@
                 mealFeedEl.innerHTML = `<div class="state-msg" style="color: #ef4444;">데이터를 동기화하지 못했습니다.</div>`;
             });
 
-        // [7] 새로운 댓글을 구글 클라우드 Firestore 데이터베이스에 등록하는 함수
+        // 📆 [상단 달력 입력/변경 시 해당 날짜 슬라이드로 순간 이동하는 기능]
+        dateSelector.addEventListener('change', (e) => {
+            const selectedDate = e.target.value.replace(/-/g, ''); // '2026-05-27' -> '20260527'
+            
+            if (selectedDate in dateToSlideIndex) {
+                const targetIndex = dateToSlideIndex[selectedDate];
+                swiperInstance.slideTo(targetIndex, 400); // 400ms(0.4초) 동안 부드럽게 해당 카드로 슬라이딩 이동!
+            } else {
+                alert("해당 날짜의 급식 데이터가 존재하지 않습니다.");
+            }
+        });
+
+        // [파이어베이스 함수 기본 유지]
         async function addServerComment(commentId) {
             const inputEl = document.getElementById(`input-${commentId}`);
             const starEl = document.getElementById(`star-${commentId}`);
@@ -361,7 +466,6 @@
             }
         }
 
-        // [8] 구글 클라우드로부터 특정 급식의 댓글을 실시간 정렬해서 가져오는 함수
         async function loadServerComments(commentId) {
             const listEl = document.getElementById('list-' + commentId);
             if (!listEl) return;
@@ -410,7 +514,6 @@
             }
         }
 
-        // [9] 구글 클라우드 데이터베이스 서버에서 특정 일련번호(docId)를 가진 댓글을 완전히 지우는 함수
         async function deleteServerComment(commentId, docId) {
             if (!confirm("이 리뷰를 삭제하시겠습니까? (서버에서 완전히 삭제됩니다)")) return;
 
@@ -423,19 +526,5 @@
             }
         }
     </script>
-</head>
-<body>
-
-    <div class="container">
-        <div class="header">
-            <h1>🍽️ 이번 달 급식 리뷰 피드</h1>
-            <div id="month-display" class="month-text">0000년 00월</div>
-        </div>
-        
-        <div id="meal-feed" class="meal-feed">
-            <div class="state-msg">급식 정보를 동기화하는 중입니다...</div>
-        </div>
-    </div>
-
 </body>
 </html>
