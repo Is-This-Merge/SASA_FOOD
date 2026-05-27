@@ -23,7 +23,7 @@
 
         .container {
             width: 100%;
-            max-width: 650px; /* 피드 스타일을 위해 폭을 조금 줄임 */
+            max-width: 650px;
         }
 
         .header {
@@ -43,7 +43,6 @@
             font-weight: bold;
         }
 
-        /* 날짜별 카드 (세로 피드 스타일) */
         .meal-feed {
             display: flex;
             flex-direction: column;
@@ -81,7 +80,6 @@
             border-radius: 12px;
         }
 
-        /* 아침, 점심, 저녁 구역 */
         .meal-section {
             background: #ffffff;
             border: 1px solid #e2e8f0;
@@ -113,14 +111,12 @@
             margin-bottom: 12px;
         }
 
-        /* 💬 댓글 시스템 스타일 */
         .comment-box {
             border-top: 1px solid #f1f5f9;
             padding-top: 12px;
             margin-top: 10px;
         }
 
-        /* 댓글 리스트 */
         .comment-list {
             list-style: none;
             margin-bottom: 10px;
@@ -135,6 +131,7 @@
             margin-bottom: 5px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
 
         .comment-item .stars {
@@ -142,7 +139,6 @@
             font-size: 0.8rem;
         }
 
-        /* 댓글 입력창 구역 */
         .comment-input-group {
             display: flex;
             gap: 8px;
@@ -192,25 +188,35 @@
             font-size: 1.1rem;
         }
     </style>
-</head>
-<body>
 
-    <div class="container">
-        <div class="header">
-            <h1>🍽️ 이번 달 급식 리뷰 피드</h1>
-            <div id="month-display" class="month-text">0000년 00월</div>
-        </div>
-        
-        <div id="meal-feed" class="meal-feed">
-            <div class="state-msg">급식 정보를 동기화하는 중입니다...</div>
-        </div>
-    </div>
+    <script type="module">
+        // [1] 구글 파이어베이스 모듈 가져오기 (가장 상단 고정)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "firebase/app";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
 
-    <script>
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyDJUxYwL2yUq0aGTFH_DFeCNNNVE8henMM",
+          authDomain: "food26-61be8.firebaseapp.com",
+          projectId: "food26-61be8",
+          storageBucket: "food26-61be8.firebasestorage.app",
+          messagingSenderId: "503631542022",
+          appId: "1:503631542022:web:9119acf97d8937fbf9d087"
+        };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // [3] 나이스 교육청 급식 API 기본 설정
         const API_KEY = "167317ab910f421c85c88e20e02d508e"; 
         const ATPT_OFCDC_SC_CODE = "I10"; 
         const SD_SCHUL_CODE = "9300181";   
 
+        // [4] 날짜 자동 계산 로직
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -222,10 +228,12 @@
 
         document.getElementById('month-display').innerText = `${yyyy}년 ${mm}월`;
 
+        // [5] 나이스 API URL 조립 (&pSize=100으로 한 달 치 다 가져옴)
         const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${ATPT_OFCDC_SC_CODE}&SD_SCHUL_CODE=${SD_SCHUL_CODE}&MLSV_FROM_YMD=${fromDate}&MLSV_TO_YMD=${toDate}&pSize=100`;
 
         const mealFeedEl = document.getElementById('meal-feed');
 
+        // [6] 나이스 서버에서 급식 정보 가져와서 화면에 그리기
         fetch(url)
             .then(response => response.json())
             .then(data => {
@@ -237,7 +245,7 @@
                 const mealRows = data.mealServiceDietInfo[1].row;
                 mealFeedEl.innerHTML = ''; 
 
-                // 1. 데이터 날짜별 그룹화
+                // 날짜별 그룹화 작업
                 const groupedMeals = {};
                 mealRows.forEach(row => {
                     const mealDate = row.MLSV_YMD;
@@ -248,7 +256,7 @@
                     });
                 });
 
-                // 2. 날짜별 피드 생성 (최신순 정렬을 원하시면 .sort().reverse()를 쓰셔도 됩니다)
+                // 날짜 오름차순으로 정렬하여 카드 배치
                 Object.keys(groupedMeals).sort().forEach(mealDate => {
                     const meals = groupedMeals[mealDate]; 
                     const displayDate = `${mealDate.substring(4,6)}월 ${mealDate.substring(6,8)}일`;
@@ -259,8 +267,8 @@
 
                     let allMealsHtml = '';
                     
-                    // 각 식사(조식/중식/석식) 구역 생성
-                    meals.forEach((meal, index) => {
+                    // 조식, 중식, 석식별 구역 레이아웃 구성
+                    meals.forEach((meal) => {
                         const cleanMenu = meal.menu.replace(/[0-9]+\./g, '');
                         const menuItems = cleanMenu.split('<br/>');
                         
@@ -269,7 +277,7 @@
                             if(item.trim()) menuListHtml += `<li>• ${item.trim()}</li>`;
                         });
 
-                        // 댓글 구분을 위한 고유 ID 생성 (예: 20260527-중식)
+                        // 댓글 데이터베이스 조회를 위한 날짜식별 고유 ID 조합
                         const commentId = `${mealDate}-${meal.type}`;
 
                         allMealsHtml += `
@@ -281,7 +289,8 @@
                                 
                                 <div class="comment-box">
                                     <ul class="comment-list" id="list-${commentId}">
-                                        </ul>
+                                        <li style="color:#94a3b8; font-size:0.85rem;">리뷰를 불러오는 중...</li>
+                                    </ul>
                                     <div class="comment-input-group">
                                         <select class="star-select" id="star-${commentId}">
                                             <option value="5">★ 5</option>
@@ -290,8 +299,8 @@
                                             <option value="2">★ 2</option>
                                             <option value="1">★ 1</option>
                                         </select>
-                                        <input type="text" class="comment-input" id="input-${commentId}" placeholder="급식 리뷰를 남겨주세요!">
-                                        <button class="comment-btn" onclick="addComment('${commentId}')">등록</button>
+                                        <input type="text" class="comment-input" id="input-${commentId}" placeholder="함께 볼 리뷰를 남겨주세요!">
+                                        <button class="comment-btn" data-id="${commentId}">등록</button>
                                     </div>
                                 </div>
                             </div>
@@ -308,10 +317,18 @@
 
                     mealFeedEl.appendChild(card);
 
-                    // 카드가 화면에 그려진 후, 해당 식사들의 기존 댓글 불러오기
+                    // 화면 배치가 끝난 식사 구역들의 실제 서버 저장된 리뷰들 불러오기 호출
                     meals.forEach(meal => {
                         const commentId = `${mealDate}-${meal.type}`;
-                        loadComments(commentId);
+                        loadServerComments(commentId);
+                    });
+                });
+
+                // 동적 생성된 등록 버튼들에 클릭 연동 이벤트 추가
+                document.querySelectorAll('.comment-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const commentId = e.target.getAttribute('data-id');
+                        addServerComment(commentId);
                     });
                 });
             })
@@ -320,57 +337,111 @@
                 mealFeedEl.innerHTML = `<div class="state-msg" style="color: #ef4444;">데이터를 동기화하지 못했습니다.</div>`;
             });
 
-        // 3. 댓글 등록 함수
-        function addComment(commentId) {
+        // [7] 새로운 댓글을 구글 클라우드 Firestore 데이터베이스에 등록하는 함수
+        async function addServerComment(commentId) {
             const inputEl = document.getElementById(`input-${commentId}`);
             const starEl = document.getElementById(`star-${commentId}`);
             const text = inputEl.value.trim();
-            const star = starEl.value;
+            const star = parseInt(starEl.value);
 
             if (!text) {
                 alert("리뷰 내용을 입력해주세요!");
                 return;
             }
 
-            // 기존 로컬스토리지 데이터 가져오기
-            let comments = JSON.parse(localStorage.getItem(commentId)) || [];
-            
-            // 새 댓글 객체 생성
-            const newComment = { text: text, star: star };
-            comments.push(newComment);
+            try {
+                // 구글 클라우드의 'comments' 저장 폴더에 저장 시도
+                await addDoc(collection(db, "comments"), {
+                    commentId: commentId,
+                    text: text,
+                    star: star,
+                    createdAt: new Date()
+                });
 
-            // 로컬스토리지에 재저장
-            localStorage.setItem(commentId, JSON.stringify(comments));
-
-            // 입력창 비우기
-            inputEl.value = '';
-
-            // 댓글 목록 새로고침
-            loadComments(commentId);
+                inputEl.value = '';
+                loadServerComments(commentId); // 정상 등록 시 목록 새로고침
+            } catch (e) {
+                console.error("Error adding document: ", e);
+            }
         }
 
-        // 4. 댓글 불러오기 함수
-        function loadComments(commentId) {
-            const listEl = document.getElementById(`list-${commentId}`);
+        // [8] 구글 클라우드로부터 특정 급식의 댓글을 실시간 정렬해서 가져오는 함수
+        async function loadServerComments(commentId) {
+            const listEl = document.getElementById('list-' + commentId);
             if (!listEl) return;
 
-            let comments = JSON.parse(localStorage.getItem(commentId)) || [];
-            listEl.innerHTML = ''; // 기존 목록 비우기
-
-            comments.forEach(comment => {
-                const li = document.createElement('li');
-                li.classList.add('comment-item');
+            try {
+                // 해당 ID 조건과 일치하는 문서만 시간순 정렬 쿼리 생성
+                const q = query(
+                    collection(db, "comments"), 
+                    where("commentId", "==", commentId),
+                    orderBy("createdAt", "asc")
+                );
                 
-                // 별점 개수만큼 ★ 그리기
-                const starString = '★'.repeat(comment.star) + '☆'.repeat(5 - comment.star);
+                const querySnapshot = await getDocs(q);
+                listEl.innerHTML = ''; 
 
-                li.innerHTML = `
-                    <span>${comment.text}</span>
-                    <span class="stars">${starString}</span>
-                `;
-                listEl.appendChild(li);
-            });
+                if (querySnapshot.empty) {
+                    listEl.innerHTML = `<li style="color:#cbd5e1; font-size:0.85rem; font-style:italic;">가장 먼저 리뷰를 남겨보세요!</li>`;
+                    return;
+                }
+
+                querySnapshot.forEach((docSnap) => {
+                    const comment = docSnap.data();
+                    const docId = docSnap.id; // 개별 댓글 데이터 고유 일련번호(삭제용 키)
+
+                    const li = document.createElement('li');
+                    li.classList.add('comment-item');
+                    
+                    const starString = '★'.repeat(comment.star) + '☆'.repeat(5 - comment.star);
+
+                    li.innerHTML = `
+                        <div>
+                            <span>${comment.text}</span>
+                            <span class="stars" style="margin-left:8px;">${starString}</span>
+                        </div>
+                        <span class="delete-btn" style="cursor:pointer; color:#ef4444; font-weight:bold;">❌</span>
+                    `;
+
+                    // ❌ 버튼 클릭 시 구글 서버 단독 데이터 영구 삭제 함수 연동
+                    li.querySelector('.delete-btn').addEventListener('click', () => {
+                        deleteServerComment(commentId, docId);
+                    });
+
+                    listEl.appendChild(li);
+                });
+            } catch (e) {
+                console.error("Error loading documents: ", e);
+                listEl.innerHTML = `<li style="color:#ef4444; font-size:0.85rem;">리뷰 로드 실패</li>`;
+            }
+        }
+
+        // [9] 구글 클라우드 데이터베이스 서버에서 특정 일련번호(docId)를 가진 댓글을 완전히 지우는 함수
+        async function deleteServerComment(commentId, docId) {
+            if (!confirm("이 리뷰를 삭제하시겠습니까? (서버에서 완전히 삭제됩니다)")) return;
+
+            try {
+                await deleteDoc(doc(db, "comments", docId));
+                loadServerComments(commentId); // 삭제 완료 후 목록 새로 갱신
+            } catch (e) {
+                console.error("Error removing document: ", e);
+                alert("삭제 권한이 없거나 내부 오류가 발생했습니다.");
+            }
         }
     </script>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🍽️ 이번 달 급식 리뷰 피드</h1>
+            <div id="month-display" class="month-text">0000년 00월</div>
+        </div>
+        
+        <div id="meal-feed" class="meal-feed">
+            <div class="state-msg">급식 정보를 동기화하는 중입니다...</div>
+        </div>
+    </div>
+
 </body>
 </html>
