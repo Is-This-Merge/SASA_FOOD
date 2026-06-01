@@ -94,9 +94,13 @@ fetch(url)
 
                 const commentId = `${mealDate}-${meal.type}`;
 
+                // 🌟 급식 유형 옆에 평균 평점이 들어갈 공간(span#avg-...)을 새로 만들었습니다.
                 allMealsHtml += `
                     <div class="meal-section">
-                        <span class="meal-type">${meal.type}</span>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <span class="meal-type" style="margin-bottom: 0;">${meal.type}</span>
+                            <span class="avg-star-badge" id="avg-${commentId}" style="font-size: 0.9rem; color: #f59e0b; font-weight: bold;"></span>
+                        </div>
                         <ul class="menu-list">
                             ${menuListHtml}
                         </ul>
@@ -218,6 +222,7 @@ async function addServerComment(commentId) {
 
 async function loadServerComments(commentId) {
     const listEl = document.getElementById('list-' + commentId);
+    const avgEl = document.getElementById('avg-' + commentId); // 🌟 평균을 넣을 엘리먼트 가져오기
     if (!listEl) return;
 
     try {
@@ -232,19 +237,26 @@ async function loadServerComments(commentId) {
 
         if (querySnapshot.empty) {
             listEl.innerHTML = `<li style="color:#cbd5e1; font-size:0.85rem; font-style:italic;">가장 먼저 리뷰를 남겨보세요!</li>`;
+            if (avgEl) avgEl.innerHTML = ''; // 리뷰가 없으면 평균 평점 칸을 비웁니다.
             return;
         }
+
+        let totalStars = 0; // 🌟 별점 합계 저장용
+        let commentCount = 0; // 🌟 리뷰 개수 저장용
 
         querySnapshot.forEach((docSnap) => {
             const comment = docSnap.data();
             const docId = docSnap.id; 
+
+            // 평균 계산을 위해 데이터 누적
+            totalStars += comment.star;
+            commentCount++;
 
             const li = document.createElement('li');
             li.classList.add('comment-item');
             
             const starString = '★'.repeat(comment.star) + '☆'.repeat(5 - comment.star);
 
-            // 🌟 별(stars)이 먼저 나오고 문자(text)가 뒤에 나오도록 순서를 변경했습니다.
             li.innerHTML = `
                 <div>
                     <span class="stars" style="margin-right:8px;">${starString}</span>
@@ -259,6 +271,13 @@ async function loadServerComments(commentId) {
 
             listEl.appendChild(li);
         });
+
+        // 🌟 실시간 평균 계산 후 상단에 반영 (소수점 첫째짜리까지 표현, 예: ★ 4.3 (3개))
+        if (avgEl && commentCount > 0) {
+            const average = (totalStars / commentCount).toFixed(1);
+            avgEl.innerHTML = `★ ${average} (${commentCount}개)`;
+        }
+
     } catch (e) {
         console.error("Error loading documents: ", e);
         listEl.innerHTML = `<li style="color:#ef4444; font-size:0.85rem;">리뷰 로드 실패</li>`;
