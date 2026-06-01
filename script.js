@@ -246,8 +246,8 @@ async function loadServerComments(commentId) {
 
             li.innerHTML = `
                 <div>
-                    <span>${comment.text}</span>
                     <span class="stars" style="margin-left:8px;">${starString}</span>
+                    <span>${comment.text}</span>
                 </div>
                 <span class="delete-btn" style="cursor:pointer; color:#ef4444; font-weight:bold;">❌</span>
             `;
