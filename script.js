@@ -244,9 +244,10 @@ async function loadServerComments(commentId) {
             
             const starString = '★'.repeat(comment.star) + '☆'.repeat(5 - comment.star);
 
+            // 🌟 별(stars)이 먼저 나오고 문자(text)가 뒤에 나오도록 순서를 변경했습니다.
             li.innerHTML = `
                 <div>
-                    <span class="stars" style="margin-left:8px;">${starString}</span>
+                    <span class="stars" style="margin-right:8px;">${starString}</span>
                     <span>${comment.text}</span>
                 </div>
                 <span class="delete-btn" style="cursor:pointer; color:#ef4444; font-weight:bold;">❌</span>
