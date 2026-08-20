@@ -1,177 +1,117 @@
-// Must match the Cache Storage name used by MealPage.
-const CACHE_NAME = "school-meals-v5";
-
-const STATIC_CACHE = [
-  "/",
-];
-
-// --------------------------------------------------
-// Install
-// --------------------------------------------------
+const CACHE_NAME = "school-meals-v7";
+const STATIC_CACHE = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
+const pendingMealRequests = new Map();
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_CACHE);
-    })
-  );
-
+  event.waitUntil(cacheAppShell());
   self.skipWaiting();
 });
 
-// --------------------------------------------------
-// Activate
-// --------------------------------------------------
+async function cacheAppShell() {
+  const cache = await caches.open(CACHE_NAME);
+  const response = await fetch("/", { cache: "reload" });
+  if (!response.ok) throw new Error("App shell could not be downloaded");
+  await cache.put("/", response.clone());
+
+  const html = await response.text();
+  const assetUrls = [...html.matchAll(/(?:src|href)="([^"]+)"/g)]
+    .map((match) => match[1])
+    .filter((url) => url.startsWith("/_next/static/"));
+  const urls = [...new Set([...STATIC_CACHE.slice(1), ...assetUrls])];
+  await Promise.allSettled(urls.map((url) => cache.add(url)));
+}
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter(
-            (name) =>
-              (name.startsWith("meal-cache-") ||
-                name.startsWith("school-meals-")) &&
-              name !== CACHE_NAME
-          )
-          .map((name) => caches.delete(name))
-      );
-    })
-  );
-
+  event.waitUntil(caches.keys().then((names) => Promise.all(
+    names
+      .filter((name) => (name.startsWith("meal-cache-") || name.startsWith("school-meals-")) && name !== CACHE_NAME)
+      .map((name) => caches.delete(name))
+  )));
   self.clients.claim();
 });
 
-// --------------------------------------------------
-// Fetch
-// --------------------------------------------------
-
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-
-  // GET만 처리
-  if (request.method !== "GET") {
-    return;
-  }
+  if (request.method !== "GET") return;
 
   const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
 
-  // 같은 origin의 요청만 처리
-  if (url.origin !== self.location.origin) {
-    return;
-  }
-
-  // ------------------------------------------------
-  // 급식 API만 캐시
-  // ------------------------------------------------
-
-  if (
-    url.pathname === "/api/meals" &&
-    url.searchParams.has("date")
-  ) {
+  if (url.pathname === "/api/meals" && url.searchParams.has("date")) {
     event.respondWith(handleMealRequest(request));
-    return;
+  } else if (request.mode === "navigate") {
+    event.respondWith(handleNavigationRequest(request));
+  } else if (url.pathname.startsWith("/_next/static/") || STATIC_CACHE.includes(url.pathname)) {
+    event.respondWith(handleStaticRequest(request));
   }
-
-  // ------------------------------------------------
-  // 나머지 요청은 Service Worker가 건드리지 않음
-  // ------------------------------------------------
-
-  // 리뷰 API도 여기서는 처리하지 않는다.
 });
 
-// --------------------------------------------------
-// Meal API Cache
-// --------------------------------------------------
-
-async function handleMealRequest(request) {
+async function handleNavigationRequest(request) {
   const cache = await caches.open(CACHE_NAME);
-
-  const cachedResponse = await cache.match(request);
-
-  // 캐시가 있으면 API 요청하지 않음
-  if (cachedResponse) {
-    return cachedResponse;
-  }
-
-  // 캐시가 없을 때만 실제 API 요청
   try {
     const response = await fetch(request);
-
-    if (response.ok) {
-      await cache.put(request, response.clone());
-    }
-
+    if (response.ok) await cache.put(request, response.clone());
     return response;
-  } catch (error) {
-    console.error("Meal API request failed:", error);
-
-    throw error;
+  } catch {
+    return (await cache.match(request)) || (await cache.match("/")) || Response.error();
   }
 }
 
-// --------------------------------------------------
-// Month prefetch
-// --------------------------------------------------
+async function handleStaticRequest(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cachedResponse = await cache.match(request);
+  if (cachedResponse) return cachedResponse;
+
+  const response = await fetch(request);
+  if (response.ok) await cache.put(request, response.clone());
+  return response;
+}
+
+async function handleMealRequest(request) {
+  const key = request.url;
+  const pending = pendingMealRequests.get(key);
+  if (pending) return (await pending).clone();
+
+  const responsePromise = (async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) return cachedResponse;
+
+    const response = await fetch(request);
+    if (response.ok) await cache.put(request, response.clone());
+    return response;
+  })();
+
+  pendingMealRequests.set(key, responsePromise);
+  try {
+    return (await responsePromise).clone();
+  } finally {
+    pendingMealRequests.delete(key);
+  }
+}
 
 self.addEventListener("message", (event) => {
-  if (!event.data) {
-    return;
-  }
-
-  if (event.data.type === "PREFETCH_MONTH") {
-    const { dates } = event.data;
-
-    if (!Array.isArray(dates)) {
-      return;
-    }
-
-    event.waitUntil(prefetchMeals(dates));
+  if (event.data?.type === "PREFETCH_DATE_RANGE" && Array.isArray(event.data.dates)) {
+    event.waitUntil(prefetchMeals(event.data.dates));
   }
 });
 
-// --------------------------------------------------
-// Prefetch all meals of the month
-// --------------------------------------------------
-
 async function prefetchMeals(dates) {
   const cache = await caches.open(CACHE_NAME);
+  const desiredDates = new Set(dates);
+  const cachedRequests = await cache.keys();
+  await Promise.all(cachedRequests.map((request) => {
+    const url = new URL(request.url);
+    const cachedDate = url.pathname === "/api/meals" ? url.searchParams.get("date") : null;
+    return cachedDate && !desiredDates.has(cachedDate) ? cache.delete(request) : false;
+  }));
 
-  await Promise.all(
-    dates.map(async (date) => {
-      const url = `/api/meals?date=${date}`;
-
-      const request = new Request(url, {
-        method: "GET",
-      });
-
-      // 이미 캐시되어 있으면 API 요청하지 않는다.
-      const cachedResponse = await cache.match(request);
-
-      if (cachedResponse) {
-        return;
-      }
-
-      try {
-        const response = await fetch(request);
-
-        if (!response.ok) {
-          console.warn(
-            `Meal API failed: ${date}`,
-            response.status
-          );
-          return;
-        }
-
-        await cache.put(request, response.clone());
-
-        console.log(`Meal cached: ${date}`);
-      } catch (error) {
-        console.error(
-          `Meal prefetch failed: ${date}`,
-          error
-        );
-      }
-    })
-  );
+  await Promise.all(dates.map(async (date) => {
+    try {
+      const response = await handleMealRequest(new Request(new URL(`/api/meals?date=${date}`, self.location.origin)));
+      if (!response.ok) console.warn(`Meal API failed: ${date}`, response.status);
+    } catch (error) {
+      console.error(`Meal prefetch failed: ${date}`, error);
+    }
+  }));
 }

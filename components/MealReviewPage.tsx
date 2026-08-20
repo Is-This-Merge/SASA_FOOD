@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AllergyNotice from "./AllergyNotice";
 import { useAuth } from "./AuthProvider";
 import DateNavigator from "./DateNavigator";
@@ -11,13 +11,9 @@ import MealCard from "./MealCard";
 import ConnectionStatus from "./ConnectionStatus";
 import ReviewForm from "./ReviewForm";
 import ReviewList, { Review } from "./ReviewList";
+import ThemeToggle from "./ThemeToggle";
 
 type Meal = { date: string; mealType: string; menu: string[]; calorie?: string; nutrition?: string[] };
-type TouchGestureEvent = {
-  changedTouches: { [index: number]: { clientX: number; clientY: number } };
-  touches: { [index: number]: { clientX: number; clientY: number } };
-};
-
 const copy = {
   breakfast: "조식",
   lunch: "중식",
@@ -52,120 +48,19 @@ export default function MealReviewPage({ date, mealType, menuName }: { date: str
   const { user } = useAuth();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [meal, setMeal] = useState<Meal | null>(null);
-  const [dayMeals, setDayMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
   const [mealLoading, setMealLoading] = useState(true);
-  const [edgeBounce, setEdgeBounce] = useState<"" | "bounce-up" | "bounce-down">("");
-  const [dragOffset, setDragOffset] = useState(0);
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const mealTransitioning = useRef(false);
   const mealId = `${date}:${mealType}`;
 
   const navigate = (nextDate: string, nextMealType: string) => {
     if (nextDate !== date || nextMealType !== mealType) router.push(`/reviews/${nextDate}/${encodeURIComponent(nextMealType)}`);
   };
-  const moveMeal = (direction: number) => {
-    const index = dayMeals.findIndex((item) => item.mealType === mealType);
-    const next = dayMeals[index + direction];
-    const bounceDirection = direction > 0 ? "up" : "down";
-    if (!next) {
-      triggerBounce(bounceDirection);
-      return;
-    }
-    if (mealTransitioning.current) return;
-    mealTransitioning.current = true;
-    triggerBounce(bounceDirection);
-    window.setTimeout(() => navigate(date, next.mealType), 300);
+  const cycleMeal = () => {
+    const mealTypes = [copy.breakfast, copy.lunch, copy.dinner];
+    const currentIndex = mealTypes.indexOf(mealType);
+    const nextMealType = mealTypes[(currentIndex + 1 + mealTypes.length) % mealTypes.length];
+    navigate(date, nextMealType);
   };
-  const triggerBounce = (direction: "up" | "down") => {
-    setEdgeBounce(direction === "up" ? "bounce-up" : "bounce-down");
-    window.setTimeout(() => setEdgeBounce(""), 320);
-  };
-  const onTouchStart = (event: TouchGestureEvent) => {
-    const touch = event.changedTouches[0];
-    touchStart.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
-  };
-  const onTouchEnd = (event: TouchGestureEvent) => {
-    const start = touchStart.current;
-    const touch = event.changedTouches[0];
-    touchStart.current = null;
-    setDragOffset(0);
-    if (!start || !touch) return;
-    const verticalDistance = touch.clientY - start.y;
-    const horizontalDistance = touch.clientX - start.x;
-    if (Math.abs(verticalDistance) < 60 || Math.abs(verticalDistance) <= Math.abs(horizontalDistance)) return;
-    const atTop = window.scrollY <= 2;
-    const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
-    if (verticalDistance < 0 && atBottom) {
-      moveMeal(1);
-    }
-    if (verticalDistance > 0 && atTop) {
-      moveMeal(-1);
-    }
-  };
-  const onTouchMove = (event: TouchGestureEvent) => {
-    const start = touchStart.current;
-    const touch = event.touches[0];
-    if (!start || !touch) return;
-    const verticalDistance = touch.clientY - start.y;
-    const horizontalDistance = touch.clientX - start.x;
-    if (Math.abs(verticalDistance) <= Math.abs(horizontalDistance)) return;
-    const atTop = window.scrollY <= 2;
-    const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
-    const isPullingPastEdge = (verticalDistance > 0 && atTop) || (verticalDistance < 0 && atBottom);
-    setDragOffset(isPullingPastEdge ? Math.max(-24, Math.min(24, verticalDistance * 0.18)) : 0);
-  };
-
-  useEffect(() => {
-    const handleTouchStart = (event: globalThis.TouchEvent) => onTouchStart(event);
-    const handleTouchMove = (event: globalThis.TouchEvent) => onTouchMove(event);
-    const handleTouchEnd = (event: globalThis.TouchEvent) => onTouchEnd(event);
-    const handleTouchCancel = () => { touchStart.current = null; setDragOffset(0); };
-    const handleWheel = (event: WheelEvent) => {
-      if (Math.abs(event.deltaY) < 12) return;
-      const atTop = window.scrollY <= 2;
-      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
-      if (event.deltaY < 0 && atTop) {
-        event.preventDefault();
-        moveMeal(-1);
-      }
-      if (event.deltaY > 0 && atBottom) {
-        event.preventDefault();
-        moveMeal(1);
-      }
-    };
-    document.addEventListener("touchstart", handleTouchStart, { passive: true });
-    document.addEventListener("touchmove", handleTouchMove, { passive: true });
-    document.addEventListener("touchend", handleTouchEnd, { passive: true });
-    document.addEventListener("touchcancel", handleTouchCancel, { passive: true });
-    window.addEventListener("wheel", handleWheel, { passive: false });
-    return () => {
-      document.removeEventListener("touchstart", handleTouchStart);
-      document.removeEventListener("touchmove", handleTouchMove);
-      document.removeEventListener("touchend", handleTouchEnd);
-      document.removeEventListener("touchcancel", handleTouchCancel);
-      window.removeEventListener("wheel", handleWheel);
-    };
-  }, [date, dayMeals, mealType]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
-      const atTop = window.scrollY <= 2;
-      const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
-      if (event.key === "ArrowUp" && atTop) {
-        event.preventDefault();
-        moveMeal(-1);
-      }
-      if (event.key === "ArrowDown" && atBottom) {
-        event.preventDefault();
-        moveMeal(1);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [dayMeals, mealType]);
 
   const loadReviews = useCallback(async () => {
     setLoading(true);
@@ -195,10 +90,9 @@ export default function MealReviewPage({ date, mealType, menuName }: { date: str
       })
       .then((nextMeals: Meal[]) => {
         if (!active) return;
-        setDayMeals(nextMeals);
         setMeal(nextMeals.find((item) => item.mealType === mealType) ?? null);
       })
-      .catch(() => { if (active) { setDayMeals([]); setMeal(null); } })
+      .catch(() => { if (active) setMeal(null); })
       .finally(() => { if (active) setMealLoading(false); });
     return () => { active = false; };
   }, [date, mealType]);
@@ -206,11 +100,11 @@ export default function MealReviewPage({ date, mealType, menuName }: { date: str
   const average = reviews.length ? (reviews.reduce((sum, review) => sum + (review.rating ?? 5), 0) / reviews.length).toFixed(1) : null;
   const icon = mealType === copy.breakfast ? "☀️" : mealType === copy.lunch ? "🌤️" : "🌙";
 
-  return <main className={`app review-page ${edgeBounce}`} style={{ transform: dragOffset ? `translateY(${dragOffset}px)` : undefined }}>
+  return <main className="app review-page">
     <Link className="back-link" href={`/?date=${date}`}>‹ {copy.back}</Link>
     <header className="review-page-header">
-      <div className="review-header-actions"><ConnectionStatus /><GoogleLoginButton /></div>
-      <h1>{mealType} {copy.review}<span className="review-title-icon">{icon}</span></h1>
+      <div className="review-header-actions"><ConnectionStatus /><ThemeToggle /><GoogleLoginButton /></div>
+      <h1>{mealType} {copy.review}<button className="review-title-icon" type="button" onClick={cycleMeal} aria-label="다음 식단 리뷰로 이동">{icon}</button></h1>
       <p>{average ? `★ ${average} / 5 · ${copy.reviews} ${reviews.length}개` : copy.noRating}</p>
     </header>
     <DateNavigator value={date} onChange={(nextDate) => navigate(nextDate, mealType)} onToday={() => {

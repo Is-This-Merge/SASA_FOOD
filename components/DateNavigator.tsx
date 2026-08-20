@@ -40,7 +40,7 @@ export default function DateNavigator({ value, onChange, onToday }: DateNavigato
         <div className="date-picker-wrapper">
           <input className="date-picker" type="date" value={inputValue} onChange={(event) => { const nextDate = event.target.value.replaceAll("-", ""); if (nextDate) onChange(nextDate); }} />
         </div>
-        <button type="button" className="today-button" onClick={() => onToday ? onToday() : onChange(getSeoulToday())}>오늘</button>
+        <button type="button" className="today-button" onClick={() => onToday ? onToday() : onChange(getSeoulToday())}>now</button>
       </div>
     </div>
     <button type="button" className="date-arrow" aria-label="다음 날짜" onClick={() => moveDate(1)}>›</button>

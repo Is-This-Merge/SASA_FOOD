@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import { prefetchCurrentMonthMeals } from "@/lib/meal-cache";
+import { prefetchNearbyMeals } from "@/lib/meal-cache";
+
+let prefetchStarted = false;
 
 export default function MealCacheInitializer() {
   useEffect(() => {
-    prefetchCurrentMonthMeals();
+    if (prefetchStarted) return;
+    prefetchStarted = true;
+    prefetchNearbyMeals();
   }, []);
 
   return null;

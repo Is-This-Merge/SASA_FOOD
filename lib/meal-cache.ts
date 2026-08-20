@@ -31,30 +31,15 @@ function formatDate(date: Date): string {
   return `${year}${month}${day}`;
 }
 
-function getMonthDates(date: Date): string[] {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-
-  const lastDay = new Date(
-    year,
-    month + 1,
-    0
-  ).getDate();
-
-  const dates: string[] = [];
-
-  for (let day = 1; day <= lastDay; day++) {
-    dates.push(
-      formatDate(
-        new Date(year, month, day)
-      )
-    );
-  }
-
-  return dates;
+function getTwoWeekRange(date: Date): string[] {
+  return Array.from({ length: 29 }, (_, index) => {
+    const target = new Date(date);
+    target.setDate(target.getDate() + index - 14);
+    return formatDate(target);
+  });
 }
 
-export function prefetchCurrentMonthMeals(): void {
+export function prefetchNearbyMeals(): void {
   if (typeof window === "undefined") {
     return;
   }
@@ -63,7 +48,7 @@ export function prefetchCurrentMonthMeals(): void {
     return;
   }
 
-  const dates = getMonthDates(getSeoulToday());
+  const dates = getTwoWeekRange(getSeoulToday());
 
   const sendMessage = () => {
     const controller =
@@ -74,7 +59,7 @@ export function prefetchCurrentMonthMeals(): void {
     }
 
     controller.postMessage({
-      type: "PREFETCH_MONTH",
+      type: "PREFETCH_DATE_RANGE",
       dates,
     });
   };

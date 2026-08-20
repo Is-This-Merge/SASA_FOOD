@@ -6,6 +6,7 @@ import AllergyNotice from "./AllergyNotice";
 import DateNavigator from "./DateNavigator";
 import GoogleLoginButton from "./GoogleLoginButton";
 import ConnectionStatus from "./ConnectionStatus";
+import ThemeToggle from "./ThemeToggle";
 
 type Meal = {
   date: string;
@@ -18,7 +19,7 @@ type Meal = {
 
 type MealPageProps = { initialDate: string };
 
-const CACHE_NAME = "school-meals-v5";
+const CACHE_NAME = "school-meals-v7";
 
 function parseDate(value: string) {
   return new Date(Number(value.slice(0, 4)), Number(value.slice(4, 6)) - 1, Number(value.slice(6, 8)));
@@ -75,7 +76,7 @@ export default function MealPage({ initialDate }: MealPageProps) {
         setMeals(latest);
         setOffline(false);
       }
-      await writeCache(date, latest);
+      if (!navigator.serviceWorker?.controller) await writeCache(date, latest);
     } catch (error) {
       console.warn("[meal request]", date, error);
       if (id === requestId.current) {
@@ -119,7 +120,7 @@ export default function MealPage({ initialDate }: MealPageProps) {
     <main className="app" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <header className="header">
         <div><h1>SASA FOOD</h1></div>
-        <div className="header-actions"><ConnectionStatus /><GoogleLoginButton /></div>
+        <div className="header-actions"><ConnectionStatus /><ThemeToggle /><GoogleLoginButton /></div>
       </header>
 
       <DateNavigator value={dateString} onChange={(value) => setSelectedDate(parseDate(value))} />

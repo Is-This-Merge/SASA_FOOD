@@ -21,7 +21,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const authorized = await getAuthorizedReview(request, id);
     if ("error" in authorized) return authorized.error;
     const { content, rating } = await request.json();
-    if (typeof content !== "string" || content.trim().length < 1 || content.trim().length > 100) return NextResponse.json({ error: "리뷰는 1~100자까지 작성할 수 있습니다." }, { status: 400 });
+    if (typeof content !== "string" || content.trim().length < 1 || content.trim().length > 300) return NextResponse.json({ error: "리뷰는 1~300자까지 작성할 수 있습니다." }, { status: 400 });
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) return NextResponse.json({ error: "별점은 1점부터 5점까지 선택해 주세요." }, { status: 400 });
     await authorized.ref.update({ content: content.trim(), rating, updatedAt: FieldValue.serverTimestamp() });
     return NextResponse.json({ success: true });

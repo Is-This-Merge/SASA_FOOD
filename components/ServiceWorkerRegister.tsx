@@ -9,8 +9,9 @@ export default function ServiceWorkerRegister() {
     }
 
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("/sw.js", { updateViaCache: "none" })
       .then((registration) => {
+        void registration.update();
         console.log(
           "Service Worker registered:",
           registration.scope

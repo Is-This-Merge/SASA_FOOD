@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     if (typeof date !== "string" || !validDate(date)) return NextResponse.json({ error: "올바른 날짜가 필요합니다." }, { status: 400 });
     if (typeof mealId !== "string" || mealId.length < 1 || mealId.length > 300 || typeof menuName !== "string" || menuName.trim().length < 1 || menuName.trim().length > 200) return NextResponse.json({ error: "메뉴 정보가 올바르지 않습니다." }, { status: 400 });
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) return NextResponse.json({ error: "별점은 1점부터 5점까지 선택해 주세요." }, { status: 400 });
-    if (typeof content !== "string" || content.trim().length < 1 || content.trim().length > 100) return NextResponse.json({ error: "리뷰는 1~100자까지 작성할 수 있습니다." }, { status: 400 });
+    if (typeof content !== "string" || content.trim().length < 1 || content.trim().length > 300) return NextResponse.json({ error: "리뷰는 1~300자까지 작성할 수 있습니다." }, { status: 400 });
     if (nickname !== undefined && (typeof nickname !== "string" || nickname.trim().length > 30)) return NextResponse.json({ error: "닉네임은 30자 이하로 입력해 주세요." }, { status: 400 });
 
     const existingReviews = await db.collection(REVIEWS_COLLECTION).where("mealId", "==", mealId).get();
