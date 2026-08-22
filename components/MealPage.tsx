@@ -103,7 +103,7 @@ export default function MealPage({ initialDate }: MealPageProps) {
   return (
     <main className="app">
       <header className="header">
-        <h1>SASA FOOD</h1>
+        <div className="brand"><h1>SASA FOOD</h1><p>오늘의 급식</p></div>
         <div className="header-actions">
           <ConnectionStatus />
           <ThemeToggle />

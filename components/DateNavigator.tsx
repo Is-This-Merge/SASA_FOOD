@@ -24,7 +24,8 @@ function getSeoulToday(): string {
 
 export default function DateNavigator({ value, onChange, onToday }: DateNavigatorProps) {
   const date = parseDate(value);
-  const displayDate = new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(date);
+  const weekday = new Intl.DateTimeFormat("ko-KR", { weekday: "short" }).format(date);
+  const displayDate = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}. (${weekday})`;
   const inputValue = `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}`;
   const moveDate = (days: number) => {
     const next = new Date(date);
@@ -38,10 +39,10 @@ export default function DateNavigator({ value, onChange, onToday }: DateNavigato
       <strong>{displayDate}</strong>
       <div className="date-actions">
         <label className="date-picker-wrapper">
-          <span className="date-picker-display" aria-hidden="true">{inputValue}</span>
+          <span className="date-picker-display" aria-hidden="true">DATE</span>
           <input className="date-picker-native" type="date" value={inputValue} aria-label="날짜 선택" onChange={(event) => { const nextDate = event.target.value.replaceAll("-", ""); if (nextDate) onChange(nextDate); }} />
         </label>
-        <button type="button" className="today-button" onClick={() => onToday ? onToday() : onChange(getSeoulToday())}>now</button>
+        <button type="button" className="today-button" onClick={() => onToday ? onToday() : onChange(getSeoulToday())}>NOW</button>
       </div>
     </div>
     <button type="button" className="date-arrow" aria-label="다음 날짜" onClick={() => moveDate(1)}>›</button>

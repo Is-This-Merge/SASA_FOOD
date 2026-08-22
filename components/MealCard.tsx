@@ -7,7 +7,10 @@ const nutritionLabel = "영양 정보";
 export default function MealCard({ meal, online }: { meal: Meal; online: boolean }) {
   return <article className="meal-card">
     <div className="meal-header">
-      <h2>{online ? <Link href={`/reviews/${meal.date}/${encodeURIComponent(meal.mealType)}`}>{meal.mealType} <small>{reviewLabel}</small></Link> : meal.mealType}</h2>
+      <h2>
+        {meal.mealType}
+        {online && <Link className="meal-review-link" href={`/reviews/${meal.date}/${encodeURIComponent(meal.mealType)}`}>{reviewLabel}</Link>}
+      </h2>
       {meal.calorie && <span>{meal.calorie}</span>}
     </div>
     <ul className="menu-list">{meal.menu.map((menu, index) => <li key={`${menu}-${index}`}>{menu}</li>)}</ul>
