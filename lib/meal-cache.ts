@@ -35,20 +35,19 @@ export function prefetchNearbyMeals(): void {
 
   const dates = getTwoWeekRange(getSeoulToday());
 
-  const sendMessage = () => {
-    const controller = navigator.serviceWorker.controller;
-    if (!controller) return;
-
-    controller.postMessage({
+  const sendMessage = (worker: ServiceWorker | null) => {
+    worker?.postMessage({
       type: "PREFETCH_DATE_RANGE",
       dates,
     });
   };
 
   if (navigator.serviceWorker.controller) {
-    sendMessage();
+    sendMessage(navigator.serviceWorker.controller);
     return;
   }
 
-  void navigator.serviceWorker.ready.then(sendMessage);
+  void navigator.serviceWorker.ready.then((registration) => {
+    sendMessage(registration.active);
+  });
 }
