@@ -3,6 +3,8 @@ import { FieldValue } from "firebase-admin/firestore";
 import { db } from "@/lib/firebase-admin";
 import { getReviewUser } from "@/lib/review-auth";
 import { moderateReview, ModerationServiceError } from "@/lib/moderation";
+import { consumeReviewAttempt, ReviewRateLimitError } from "@/lib/review-rate-limit";
+import { containsBlockedTerm } from "@/lib/review-content-filter";
 
 const REVIEWS_COLLECTION = "reviews";
 const validDate = (date: string) => /^\d{8}$/.test(date);
@@ -55,6 +57,10 @@ export async function POST(request: NextRequest) {
     if (existingReviews.docs.some((review) => review.data().authorUid === user.uid)) return NextResponse.json({ error: "이 식단에는 이미 리뷰를 작성했습니다." }, { status: 409 });
 
     const normalizedContent = content.trim();
+    await consumeReviewAttempt(user.uid);
+    if (containsBlockedTerm(normalizedContent) || (typeof nickname === "string" && containsBlockedTerm(nickname))) {
+      return NextResponse.json({ error: "사용할 수 없는 표현이 포함되어 있습니다. 내용을 수정해 주세요." }, { status: 422 });
+    }
     const moderation = await moderateReview(normalizedContent);
     if (moderation.decision !== "allow") {
       return NextResponse.json({ error: "부적절하거나 확인이 필요한 표현이 감지되었습니다. 내용을 수정해 주세요." }, { status: 422 });
@@ -80,6 +86,12 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ id: docRef.id });
   } catch (error) {
+    if (error instanceof ReviewRateLimitError) {
+      return NextResponse.json(
+        { error: "리뷰 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } },
+      );
+    }
     if (error instanceof ModerationServiceError) {
       console.error("[REVIEW MODERATION ERROR]", error);
       return NextResponse.json({ error: "리뷰 검사 서버를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요." }, { status: 503 });

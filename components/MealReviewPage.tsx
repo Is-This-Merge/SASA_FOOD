@@ -98,13 +98,11 @@ export default function MealReviewPage({ date, mealType, menuName }: { date: str
   }, [date, mealType]);
 
   const average = reviews.length ? (reviews.reduce((sum, review) => sum + (review.rating ?? 5), 0) / reviews.length).toFixed(1) : null;
-  const icon = mealType === copy.breakfast ? "☀️" : mealType === copy.lunch ? "🌤️" : "🌙";
-
   return <main className="app review-page">
     <Link className="back-link" href={`/?date=${date}`}>‹ {copy.back}</Link>
     <header className="review-page-header">
       <div className="review-header-actions"><ConnectionStatus /><ThemeToggle /><GoogleLoginButton /></div>
-      <h1>{mealType} {copy.review}<button className="review-title-icon" type="button" onClick={cycleMeal} aria-label="다음 식단 리뷰로 이동">{icon}</button></h1>
+      <h1>{mealType} {copy.review}<button className="review-title-icon" type="button" onClick={cycleMeal} aria-label="다음 식단 리뷰로 이동" title="다음 식단"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5" /><path d="M6.1 8.5A7 7 0 0118.7 12M17.9 15.5A7 7 0 015.3 12" /></svg></button></h1>
       <p>{average ? `★ ${average} / 5 · ${copy.reviews} ${reviews.length}개` : copy.noRating}</p>
     </header>
     <DateNavigator value={date} onChange={(nextDate) => navigate(nextDate, mealType)} onToday={() => {

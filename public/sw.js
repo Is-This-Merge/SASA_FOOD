@@ -1,4 +1,4 @@
-const CACHE_NAME = "school-meals-v7";
+const CACHE_NAME = "school-meals-v9";
 const STATIC_CACHE = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 const pendingMealRequests = new Map();
 

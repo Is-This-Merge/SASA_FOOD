@@ -66,6 +66,12 @@ NEXT_PUBLIC_ALLOWED_EMAIL_DOMAIN=
 ALLOWED_EMAIL_DOMAIN=
 ADMIN_EMAILS=
 
+# 리뷰 필터
+MODERATION_API_URL=
+MODERATION_SECRET=
+MODERATION_TIMEOUT_MS=25000
+REVIEW_BLOCKED_TERMS=
+
 ```
 
 Firebase Authentication에서 Google 로그인을 활성화하고, 배포 도메인을 승인된 도메인에 추가해야 합니다. Firestore 클라이언트 접근은 규칙으로 차단되어 있으며 리뷰 작업은 서버 API를 통해 수행됩니다.
@@ -73,6 +79,25 @@ Firebase Authentication에서 Google 로그인을 활성화하고, 배포 도메
 ## 리뷰 유해 표현 분류
 
 리뷰 작성과 수정 시 `moderation-server`에 배포된 `hongssi/final_abuse_manual_model`로 내용을 검사합니다. `allow` 판정만 Firestore에 저장하며 `review`와 `block`은 사용자에게 내용 수정을 요청합니다. 검사 서버가 응답하지 않으면 필터를 우회하지 않고 HTTP 503을 반환합니다.
+
+모델을 호출하기 전에 서버의 기본 금지어 사전으로 리뷰 내용과 닉네임을 검사합니다. Unicode NFKC 정규화 후 공백·문장부호·기호를 제거해 단순 우회 표현도 탐지합니다. 금지어가 발견되면 Cloud Run을 호출하지 않고 HTTP 422를 반환합니다.
+
+배포 없이 운영 금지어를 추가하려면 Vercel의 `REVIEW_BLOCKED_TERMS`에 쉼표로 구분해 입력하고 재배포합니다.
+
+```dotenv
+REVIEW_BLOCKED_TERMS=추가금지어1,추가금지어2
+```
+
+기본 사전은 `lib/review-content-filter.ts`에서 관리합니다. 정상적인 음식 표현까지 막지 않도록 문맥에 따라 정상적으로 쓰일 수 있는 짧은 단어는 신중하게 추가해야 합니다.
+
+Cloud Run 호출량을 제한하기 위해 로그인 UID별 작성·수정 요청을 합산하여 다음 한도를 적용합니다.
+
+- 10분당 최대 5회
+- 24시간당 최대 20회
+- 관리자 계정에도 동일하게 적용
+- 초과 시 모델을 호출하지 않고 HTTP 429와 `Retry-After` 헤더 반환
+
+한도는 Firestore의 `reviewRateLimits` 컬렉션에서 트랜잭션으로 관리합니다. 유효성 검사를 통과해 모델 검사를 시도한 요청은 유해 표현으로 거절되거나 모델 서버 오류가 발생해도 사용량에 포함됩니다. 이는 반복 요청으로 Cloud Run 사용량을 소진하는 것을 방지하기 위한 정책입니다.
 
 기본 임계값은 다음과 같으며 Cloud Run 환경변수로 변경할 수 있습니다.
 

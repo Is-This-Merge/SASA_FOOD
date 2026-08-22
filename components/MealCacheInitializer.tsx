@@ -7,6 +7,7 @@ let prefetchStarted = false;
 
 export default function MealCacheInitializer() {
   useEffect(() => {
+    if (process.env.NODE_ENV !== "production") return;
     if (prefetchStarted) return;
     prefetchStarted = true;
     prefetchNearbyMeals();

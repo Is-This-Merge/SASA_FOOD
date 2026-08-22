@@ -19,7 +19,7 @@ type Meal = {
 
 type MealPageProps = { initialDate: string };
 
-const CACHE_NAME = "school-meals-v7";
+const CACHE_NAME = "school-meals-v9";
 
 function parseDate(value: string) {
   return new Date(Number(value.slice(0, 4)), Number(value.slice(4, 6)) - 1, Number(value.slice(6, 8)));
@@ -130,7 +130,7 @@ export default function MealPage({ initialDate }: MealPageProps) {
         </>
       ) : (
         <section className="empty">
-          <div className="empty-icon">🍽️</div>
+          <div className="empty-icon" aria-hidden="true">—</div>
           <h2>급식 정보가 없습니다</h2>
           <p>해당 날짜에 등록된 급식 정보가 없습니다.</p>
         </section>

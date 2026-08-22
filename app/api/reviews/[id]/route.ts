@@ -3,6 +3,8 @@ import { FieldValue } from "firebase-admin/firestore";
 import { db } from "@/lib/firebase-admin";
 import { getReviewUser } from "@/lib/review-auth";
 import { moderateReview, ModerationServiceError } from "@/lib/moderation";
+import { consumeReviewAttempt, ReviewRateLimitError } from "@/lib/review-rate-limit";
+import { containsBlockedTerm } from "@/lib/review-content-filter";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,7 +15,7 @@ async function getAuthorizedReview(request: NextRequest, id: string) {
   const snapshot = await ref.get();
   if (!snapshot.exists) return { error: NextResponse.json({ error: "리뷰를 찾을 수 없습니다." }, { status: 404 }) };
   if (!user.isAdmin && snapshot.data()?.authorUid !== user.uid) return { error: NextResponse.json({ error: "본인이 작성한 리뷰만 관리할 수 있습니다." }, { status: 403 }) };
-  return { ref };
+  return { ref, user };
 }
 
 export async function PATCH(request: NextRequest, { params }: Params) {
@@ -25,6 +27,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (typeof content !== "string" || content.trim().length < 1 || content.trim().length > 300) return NextResponse.json({ error: "리뷰는 1~300자까지 작성할 수 있습니다." }, { status: 400 });
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) return NextResponse.json({ error: "별점은 1점부터 5점까지 선택해 주세요." }, { status: 400 });
     const normalizedContent = content.trim();
+    await consumeReviewAttempt(authorized.user.uid);
+    if (containsBlockedTerm(normalizedContent)) {
+      return NextResponse.json({ error: "사용할 수 없는 표현이 포함되어 있습니다. 내용을 수정해 주세요." }, { status: 422 });
+    }
     const moderation = await moderateReview(normalizedContent);
     if (moderation.decision !== "allow") {
       return NextResponse.json({ error: "부적절하거나 확인이 필요한 표현이 감지되었습니다. 내용을 수정해 주세요." }, { status: 422 });
@@ -41,6 +47,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     });
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof ReviewRateLimitError) {
+      return NextResponse.json(
+        { error: "리뷰 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } },
+      );
+    }
     if (error instanceof ModerationServiceError) {
       console.error("[REVIEW MODERATION ERROR]", error);
       return NextResponse.json({ error: "리뷰 검사 서버를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요." }, { status: 503 });

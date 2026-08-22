@@ -37,10 +37,10 @@ export default function DateNavigator({ value, onChange, onToday }: DateNavigato
     <div className="date-center">
       <strong>{displayDate}</strong>
       <div className="date-actions">
-        <div className="date-picker-wrapper">
+        <label className="date-picker-wrapper">
           <span className="date-picker-display" aria-hidden="true">{inputValue}</span>
           <input className="date-picker-native" type="date" value={inputValue} aria-label="날짜 선택" onChange={(event) => { const nextDate = event.target.value.replaceAll("-", ""); if (nextDate) onChange(nextDate); }} />
-        </div>
+        </label>
         <button type="button" className="today-button" onClick={() => onToday ? onToday() : onChange(getSeoulToday())}>now</button>
       </div>
     </div>
