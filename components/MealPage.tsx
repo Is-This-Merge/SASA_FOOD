@@ -1,6 +1,6 @@
 "use client";
 
-import { TouchEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MealCard from "./MealCard";
 import AllergyNotice from "./AllergyNotice";
 import DateNavigator from "./DateNavigator";
@@ -42,7 +42,6 @@ export default function MealPage({ initialDate }: MealPageProps) {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
-  const touchStartX = useRef<number | null>(null);
   const requestId = useRef(0);
   const dateString = useMemo(() => formatDate(selectedDate), [selectedDate]);
 
@@ -101,33 +100,41 @@ export default function MealPage({ initialDate }: MealPageProps) {
     };
   }, [dateString, loadMeals]);
 
-  const moveDate = (days: number) => setSelectedDate((current) => {
-    const next = new Date(current);
-    next.setDate(next.getDate() + days);
-    return next;
-  });
-
-  const onTouchStart = (event: TouchEvent<HTMLElement>) => { touchStartX.current = event.changedTouches[0]?.clientX ?? null; };
-  const onTouchEnd = (event: TouchEvent<HTMLElement>) => {
-    const start = touchStartX.current;
-    const end = event.changedTouches[0]?.clientX;
-    touchStartX.current = null;
-    if (start === null || end === undefined || Math.abs(start - end) < 50) return;
-    moveDate(start > end ? 1 : -1);
-  };
-
   return (
-    <main className="app" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <main className="app">
       <header className="header">
-        <div><h1>SASA FOOD</h1></div>
-        <div className="header-actions"><ConnectionStatus /><ThemeToggle /><GoogleLoginButton /></div>
+        <h1>SASA FOOD</h1>
+        <div className="header-actions">
+          <ConnectionStatus />
+          <ThemeToggle />
+          <GoogleLoginButton />
+        </div>
       </header>
 
       <DateNavigator value={dateString} onChange={(value) => setSelectedDate(parseDate(value))} />
 
-      {loading ? <section className="loading">급식 정보를 불러오는 중…</section> : meals.length > 0 ? (
-        <><section className="meal-list">{meals.map((meal) => <MealCard key={`${meal.date}-${meal.mealType}`} meal={meal} online={!offline && typeof navigator !== "undefined" && navigator.onLine} />)}</section><AllergyNotice /></>
-      ) : <section className="empty"><div className="empty-icon">🍽️</div><h2>급식 정보가 없습니다</h2><p>해당 날짜에 등록된 급식 정보가 없습니다.</p></section>}
+      {loading ? (
+        <section className="loading">급식 정보를 불러오는 중…</section>
+      ) : meals.length > 0 ? (
+        <>
+          <section className="meal-list">
+            {meals.map((meal) => (
+              <MealCard
+                key={`${meal.date}-${meal.mealType}`}
+                meal={meal}
+                online={!offline && typeof navigator !== "undefined" && navigator.onLine}
+              />
+            ))}
+          </section>
+          <AllergyNotice />
+        </>
+      ) : (
+        <section className="empty">
+          <div className="empty-icon">🍽️</div>
+          <h2>급식 정보가 없습니다</h2>
+          <p>해당 날짜에 등록된 급식 정보가 없습니다.</p>
+        </section>
+      )}
     </main>
   );
 }

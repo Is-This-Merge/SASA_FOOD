@@ -7,3 +7,5 @@ out
 .vercel
 firebase-debug.log
 foodproject26-7df21-firebase-adminsdk-fbsvc-03f514e8f3.json
+__pycache__/
+*.py[cod]

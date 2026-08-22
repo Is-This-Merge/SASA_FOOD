@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "@/lib/firebase-admin";
 import { getReviewUser } from "@/lib/review-auth";
+import { moderateReview, ModerationServiceError } from "@/lib/moderation";
 
 const REVIEWS_COLLECTION = "reviews";
 const validDate = (date: string) => /^\d{8}$/.test(date);
@@ -53,21 +54,36 @@ export async function POST(request: NextRequest) {
     const existingReviews = await db.collection(REVIEWS_COLLECTION).where("mealId", "==", mealId).get();
     if (existingReviews.docs.some((review) => review.data().authorUid === user.uid)) return NextResponse.json({ error: "이 식단에는 이미 리뷰를 작성했습니다." }, { status: 409 });
 
+    const normalizedContent = content.trim();
+    const moderation = await moderateReview(normalizedContent);
+    if (moderation.decision !== "allow") {
+      return NextResponse.json({ error: "부적절하거나 확인이 필요한 표현이 감지되었습니다. 내용을 수정해 주세요." }, { status: 422 });
+    }
+
     const docRef = db.collection(REVIEWS_COLLECTION).doc(`${mealId}_${user.uid}`);
     await docRef.create({
       date,
       mealId,
       menuName: menuName.trim(),
       rating,
-      content: content.trim(),
+      content: normalizedContent,
       author: typeof nickname === "string" && nickname.trim() ? nickname.trim() : user.name,
       authorEmail: user.email,
       authorUid: user.uid,
+      moderation: {
+        model: moderation.model,
+        label: moderation.label,
+        score: moderation.score,
+      },
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     });
     return NextResponse.json({ id: docRef.id });
   } catch (error) {
+    if (error instanceof ModerationServiceError) {
+      console.error("[REVIEW MODERATION ERROR]", error);
+      return NextResponse.json({ error: "리뷰 검사 서버를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요." }, { status: 503 });
+    }
     console.error("[REVIEWS POST ERROR]", error);
     return NextResponse.json({ error: "리뷰 작성에 실패했습니다." }, { status: 500 });
   }

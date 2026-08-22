@@ -8,19 +8,10 @@ function getSeoulToday(): Date {
 
   const parts = formatter.formatToParts(new Date());
 
-  const year = Number(
-    parts.find((part) => part.type === "year")?.value
-  );
+  const getPart = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value);
 
-  const month = Number(
-    parts.find((part) => part.type === "month")?.value
-  );
-
-  const day = Number(
-    parts.find((part) => part.type === "day")?.value
-  );
-
-  return new Date(year, month - 1, day);
+  return new Date(getPart("year"), getPart("month") - 1, getPart("day"));
 }
 
 function formatDate(date: Date): string {
@@ -40,23 +31,13 @@ function getTwoWeekRange(date: Date): string[] {
 }
 
 export function prefetchNearbyMeals(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  if (!("serviceWorker" in navigator)) {
-    return;
-  }
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
   const dates = getTwoWeekRange(getSeoulToday());
 
   const sendMessage = () => {
-    const controller =
-      navigator.serviceWorker.controller;
-
-    if (!controller) {
-      return;
-    }
+    const controller = navigator.serviceWorker.controller;
+    if (!controller) return;
 
     controller.postMessage({
       type: "PREFETCH_DATE_RANGE",
@@ -69,7 +50,5 @@ export function prefetchNearbyMeals(): void {
     return;
   }
 
-  navigator.serviceWorker.ready.then(() => {
-    sendMessage();
-  });
+  void navigator.serviceWorker.ready.then(sendMessage);
 }
