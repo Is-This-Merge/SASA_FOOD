@@ -51,6 +51,7 @@ export default function MealReviewPage({ date, mealType, menuName }: { date: str
   const [loading, setLoading] = useState(true);
   const [mealLoading, setMealLoading] = useState(true);
   const mealId = `${date}:${mealType}`;
+  const currentMeal = getSeoulCurrentMeal();
 
   const navigate = (nextDate: string, nextMealType: string) => {
     if (nextDate !== date || nextMealType !== mealType) router.push(`/reviews/${nextDate}/${encodeURIComponent(nextMealType)}`);
@@ -105,7 +106,7 @@ export default function MealReviewPage({ date, mealType, menuName }: { date: str
       <h1>{mealType} {copy.review}<button className="review-title-icon" type="button" onClick={cycleMeal} aria-label="다음 식단 리뷰로 이동" title="다음 식단"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5" /><path d="M6.1 8.5A7 7 0 0118.7 12M17.9 15.5A7 7 0 015.3 12" /></svg></button></h1>
       <p>{average ? `★ ${average} / 5 · ${copy.reviews} ${reviews.length}개` : copy.noRating}</p>
     </header>
-    <DateNavigator value={date} onChange={(nextDate) => navigate(nextDate, mealType)} onToday={() => {
+    <DateNavigator value={date} isNow={date === currentMeal.date && mealType === currentMeal.mealType} onChange={(nextDate) => navigate(nextDate, mealType)} onToday={() => {
       const current = getSeoulCurrentMeal();
       navigate(current.date, current.mealType);
     }} />

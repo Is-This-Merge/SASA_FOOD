@@ -4,6 +4,7 @@ type DateNavigatorProps = {
   value: string;
   onChange: (date: string) => void;
   onToday?: () => void;
+  isNow?: boolean;
 };
 
 function parseDate(value: string): Date {
@@ -22,7 +23,7 @@ function getSeoulToday(): string {
   return year && month && day ? `${year}${month}${day}` : formatDate(new Date());
 }
 
-export default function DateNavigator({ value, onChange, onToday }: DateNavigatorProps) {
+export default function DateNavigator({ value, onChange, onToday, isNow = value === getSeoulToday() }: DateNavigatorProps) {
   const date = parseDate(value);
   const weekday = new Intl.DateTimeFormat("ko-KR", { weekday: "short" }).format(date);
   const displayDate = `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}. (${weekday})`;
@@ -42,7 +43,7 @@ export default function DateNavigator({ value, onChange, onToday }: DateNavigato
           <span className="date-picker-display" aria-hidden="true">DATE</span>
           <input className="date-picker-native" type="date" value={inputValue} aria-label="날짜 선택" onChange={(event) => { const nextDate = event.target.value.replaceAll("-", ""); if (nextDate) onChange(nextDate); }} />
         </label>
-        <button type="button" className="today-button" onClick={() => onToday ? onToday() : onChange(getSeoulToday())}>NOW</button>
+        <button type="button" className={`today-button${isNow ? " is-active" : ""}`} aria-pressed={isNow} onClick={() => onToday ? onToday() : onChange(getSeoulToday())}>NOW</button>
       </div>
     </div>
     <button type="button" className="date-arrow" aria-label="다음 날짜" onClick={() => moveDate(1)}>›</button>

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { Review } from "./ReviewList";
+import StarRatingInput from "./StarRatingInput";
 
 export default function ReviewItem({ review, onChanged }: { review: Review; onChanged: () => void }) {
   const { user } = useAuth();
@@ -10,7 +11,15 @@ export default function ReviewItem({ review, onChanged }: { review: Review; onCh
   const [content, setContent] = useState(review.content);
   const [rating, setRating] = useState(review.rating);
   const [loading, setLoading] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const formatCreatedAt = () => review.createdAt ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "short", timeStyle: "short" }).format(new Date(review.createdAt)) : "";
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!editing || !textarea) return;
+    textarea.style.height = "0px";
+    textarea.style.height = `${textarea.scrollHeight + 2}px`;
+  }, [content, editing]);
 
   async function request(method: "PATCH" | "DELETE") {
     if (!user) return;
@@ -42,6 +51,6 @@ export default function ReviewItem({ review, onChanged }: { review: Review; onCh
         </button>
       </div>}
     </div>
-    {editing ? <div className="review-edit"><textarea value={content} onChange={(event) => setContent(event.target.value)} rows={4} maxLength={300} /><label className="rating-input">별점 <select value={rating} onChange={(event) => setRating(Number(event.target.value))}>{[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{value}점</option>)}</select></label><button type="button" onClick={() => void request("PATCH")} disabled={loading}>{loading ? "수정 중..." : "수정 완료"}</button></div> : <p className="review-content">{review.content}</p>}
+    {editing ? <div className="review-edit"><textarea ref={textareaRef} value={content} onChange={(event) => setContent(event.target.value)} rows={1} maxLength={300} /><StarRatingInput value={rating} onChange={setRating} /><button type="button" onClick={() => void request("PATCH")} disabled={loading}>{loading ? "수정 중..." : "수정 완료"}</button></div> : <p className="review-content">{review.content}</p>}
   </article>;
 }

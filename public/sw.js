@@ -1,5 +1,5 @@
-const CACHE_NAME = "school-meals-v9";
-const STATIC_CACHE = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
+const CACHE_NAME = "school-meals-v10";
+const STATIC_CACHE = ["/", "/manifest.webmanifest", "/icons/icon-192-v2.png", "/icons/icon-512-v2.png", "/icons/icon-maskable-512-v2.png"];
 const pendingMealRequests = new Map();
 
 self.addEventListener("install", (event) => {

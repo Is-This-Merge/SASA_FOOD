@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useLayoutEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
+import StarRatingInput from "./StarRatingInput";
 
 export default function ReviewForm({ date, mealId, menuName, onCreated }: { date: string; mealId: string; menuName: string; onCreated: () => void }) {
   const { user, loading: authLoading, signInWithGoogle, signOutUser } = useAuth();
@@ -9,6 +10,14 @@ export default function ReviewForm({ date, mealId, menuName, onCreated }: { date
   const [content, setContent] = useState("");
   const [rating, setRating] = useState(5);
   const [loading, setLoading] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "0px";
+    textarea.style.height = `${textarea.scrollHeight + 2}px`;
+  }, [content]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -22,6 +31,7 @@ export default function ReviewForm({ date, mealId, menuName, onCreated }: { date
       if (!response.ok) throw new Error(data.error ?? "리뷰 작성에 실패했습니다.");
       setNickname("");
       setContent("");
+      if (textareaRef.current) textareaRef.current.style.height = "";
       setRating(5);
       onCreated();
     } catch (error) {
@@ -35,8 +45,8 @@ export default function ReviewForm({ date, mealId, menuName, onCreated }: { date
   return <form className="review-form" onSubmit={submit}>
     <div className="review-user"><span>{user.displayName ?? user.email}</span><button type="button" onClick={() => void signOutUser()}>로그아웃</button></div>
     <label className="review-field"><span>표시 이름</span><input value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder={user.displayName || "Google 닉네임"} maxLength={30} /></label>
-    <label className="rating-input">별점 <select value={rating} onChange={(event) => setRating(Number(event.target.value))}>{[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{"★".repeat(value)}{"☆".repeat(5 - value)} ({value}점)</option>)}</select></label>
-    <label className="review-field"><span>리뷰</span><textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder={`${menuName}은 어땠나요?`} maxLength={300} rows={4} /><small>{content.length} / 300</small></label>
-    <button type="submit" disabled={loading}>{loading ? "작성 중..." : "리뷰 작성"}</button>
+    <StarRatingInput value={rating} onChange={setRating} />
+    <label className="review-field"><span>리뷰</span><textarea ref={textareaRef} value={content} onChange={(event) => setContent(event.target.value)} placeholder={`${menuName}은 어땠나요?`} maxLength={300} rows={1} /><small>{content.length} / 300</small></label>
+    <button type="submit" className={loading ? "is-moderating" : undefined} disabled={loading}>{loading ? "검사 모델이 준비 중이면 최대 25초 걸릴 수 있어요" : "리뷰 작성"}</button>
   </form>;
 }

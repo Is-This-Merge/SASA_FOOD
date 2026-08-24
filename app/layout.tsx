@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     default: "SASA FOOD",
     template: "%s | SASA FOOD",
   },
-  description: "SASA 급식표와 식단 리뷰를 확인하는 서비스",
+  description: "SASA의 급식표와 식단 리뷰를 확인하는 서비스",
   applicationName: "SASA FOOD",
   manifest: "/manifest.webmanifest",
 };
