@@ -69,7 +69,7 @@ ADMIN_EMAILS=
 # 리뷰 필터
 MODERATION_API_URL=
 MODERATION_SECRET=
-MODERATION_TIMEOUT_MS=25000
+MODERATION_TIMEOUT_MS=50000
 REVIEW_BLOCKED_TERMS=
 
 ```
@@ -179,7 +179,7 @@ Invoke-RestMethod "$serviceUrl/moderate" -Method Post -Headers $headers -Content
 ```dotenv
 MODERATION_API_URL=<Cloud Run 서비스 URL>
 MODERATION_SECRET=<Cloud Run과 동일한 값>
-MODERATION_TIMEOUT_MS=25000
+MODERATION_TIMEOUT_MS=50000
 ```
 
 Vercel 환경변수는 Production과 필요한 Preview 환경에 각각 등록합니다. `MODERATION_SECRET`에는 절대 `NEXT_PUBLIC_` 접두사를 붙이지 않습니다.

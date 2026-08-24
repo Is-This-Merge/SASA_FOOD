@@ -17,7 +17,7 @@ export class ModerationServiceError extends Error {
 function getModerationConfig() {
   const apiUrl = process.env.MODERATION_API_URL?.replace(/\/$/, "");
   const secret = process.env.MODERATION_SECRET;
-  const timeout = Number(process.env.MODERATION_TIMEOUT_MS ?? "25000");
+  const timeout = Number(process.env.MODERATION_TIMEOUT_MS ?? "50000");
 
   if (!apiUrl || !secret) {
     throw new ModerationServiceError("리뷰 검사 서버가 설정되지 않았습니다.");
@@ -26,7 +26,7 @@ function getModerationConfig() {
   return {
     apiUrl,
     secret,
-    timeout: Number.isFinite(timeout) && timeout > 0 ? timeout : 25000,
+    timeout: Number.isFinite(timeout) && timeout > 0 ? timeout : 50000,
   };
 }
 

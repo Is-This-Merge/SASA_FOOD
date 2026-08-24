@@ -1,6 +1,7 @@
 import ServiceWorkerRegister from "../components/ServiceWorkerRegister";
 import MealCacheInitializer from "../components/MealCacheInitializer";
 import { AuthProvider } from "../components/AuthProvider";
+import { MealDateProvider } from "../components/MealDateProvider";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
@@ -27,9 +28,11 @@ export default function RootLayout({
     <html lang="ko">
       <body>
         <AuthProvider>
-          <ServiceWorkerRegister />
-          <MealCacheInitializer />
-          {children}
+          <MealDateProvider>
+            <ServiceWorkerRegister />
+            <MealCacheInitializer />
+            {children}
+          </MealDateProvider>
         </AuthProvider>
         <footer className="app-footer">© 2026 SASA 11th MJ CHOI & SC RYU. All rights reserved.</footer>
       </body>

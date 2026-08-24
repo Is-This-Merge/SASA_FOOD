@@ -7,6 +7,7 @@ import DateNavigator from "./DateNavigator";
 import GoogleLoginButton from "./GoogleLoginButton";
 import ConnectionStatus from "./ConnectionStatus";
 import ThemeToggle from "./ThemeToggle";
+import { useMealDate } from "./MealDateProvider";
 
 type Meal = {
   date: string;
@@ -38,12 +39,15 @@ function extractMeals(data: unknown): Meal[] | null {
 }
 
 export default function MealPage({ initialDate }: MealPageProps) {
-  const [selectedDate, setSelectedDate] = useState(() => parseDate(initialDate));
+  const { mealDate, setMealDate } = useMealDate();
+  const [selectedDate, setSelectedDate] = useState(() => parseDate(mealDate ?? initialDate));
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const requestId = useRef(0);
   const dateString = useMemo(() => formatDate(selectedDate), [selectedDate]);
+
+  useEffect(() => { setMealDate(dateString); }, [dateString, setMealDate]);
 
   const readCache = useCallback(async (date: string) => {
     const response = await caches.open(CACHE_NAME).then((cache) => cache.match(`/api/meals?date=${date}`));

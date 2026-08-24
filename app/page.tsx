@@ -20,19 +20,6 @@ function getSeoulToday(): string {
   return `${year}${month}${day}`;
 }
 
-type HomeProps = {
-  searchParams: Promise<{ date?: string }>;
-};
-
-function isValidDate(value: string | undefined): value is string {
-  if (!value || !/^\d{8}$/.test(value)) return false;
-  const date = new Date(Number(value.slice(0, 4)), Number(value.slice(4, 6)) - 1, Number(value.slice(6, 8)));
-  return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}` === value;
-}
-
-export default async function Home({ searchParams }: HomeProps) {
-  const { date } = await searchParams;
-  const initialDate = isValidDate(date) ? date : getSeoulToday();
-
-  return <MealPage initialDate={initialDate} />;
+export default function Home() {
+  return <MealPage initialDate={getSeoulToday()} />;
 }

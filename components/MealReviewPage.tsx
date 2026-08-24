@@ -12,6 +12,7 @@ import ConnectionStatus from "./ConnectionStatus";
 import ReviewForm from "./ReviewForm";
 import ReviewList, { Review } from "./ReviewList";
 import ThemeToggle from "./ThemeToggle";
+import { useMealDate } from "./MealDateProvider";
 
 type Meal = { date: string; mealType: string; menu: string[]; calorie?: string; nutrition?: string[] };
 const copy = {
@@ -46,6 +47,7 @@ function getSeoulCurrentMeal() {
 export default function MealReviewPage({ date, mealType, menuName }: { date: string; mealType: string; menuName: string }) {
   const router = useRouter();
   const { user } = useAuth();
+  const { setMealDate } = useMealDate();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [meal, setMeal] = useState<Meal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,6 +82,7 @@ export default function MealReviewPage({ date, mealType, menuName }: { date: str
   }, [mealId, user]);
 
   useEffect(() => { void loadReviews(); }, [loadReviews]);
+  useEffect(() => { setMealDate(date); }, [date, setMealDate]);
   useEffect(() => {
     let active = true;
     setMealLoading(true);
@@ -100,7 +103,7 @@ export default function MealReviewPage({ date, mealType, menuName }: { date: str
 
   const average = reviews.length ? (reviews.reduce((sum, review) => sum + (review.rating ?? 5), 0) / reviews.length).toFixed(1) : null;
   return <main className="app review-page">
-    <Link className="back-link" href={`/?date=${date}`}>‹ {copy.back}</Link>
+    <Link className="back-link" href="/">‹ {copy.back}</Link>
     <header className="review-page-header">
       <div className="review-header-actions"><ConnectionStatus /><ThemeToggle /><GoogleLoginButton /></div>
       <h1>{mealType} {copy.review}<button className="review-title-icon" type="button" onClick={cycleMeal} aria-label="다음 식단 리뷰로 이동" title="다음 식단"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5" /><path d="M6.1 8.5A7 7 0 0118.7 12M17.9 15.5A7 7 0 015.3 12" /></svg></button></h1>

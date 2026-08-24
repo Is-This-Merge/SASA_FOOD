@@ -6,6 +6,8 @@ import { moderateReview, ModerationServiceError } from "@/lib/moderation";
 import { consumeReviewAttempt, ReviewRateLimitError } from "@/lib/review-rate-limit";
 import { containsBlockedTerm } from "@/lib/review-content-filter";
 
+export const maxDuration = 60;
+
 const REVIEWS_COLLECTION = "reviews";
 const validDate = (date: string) => /^\d{8}$/.test(date);
 

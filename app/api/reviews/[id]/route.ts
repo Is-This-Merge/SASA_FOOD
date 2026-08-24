@@ -6,6 +6,8 @@ import { moderateReview, ModerationServiceError } from "@/lib/moderation";
 import { consumeReviewAttempt, ReviewRateLimitError } from "@/lib/review-rate-limit";
 import { containsBlockedTerm } from "@/lib/review-content-filter";
 
+export const maxDuration = 60;
+
 type Params = { params: Promise<{ id: string }> };
 
 async function getAuthorizedReview(request: NextRequest, id: string) {
