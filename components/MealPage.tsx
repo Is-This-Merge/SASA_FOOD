@@ -19,7 +19,7 @@ type Meal = {
 
 type MealPageProps = { initialDate: string };
 
-const CACHE_NAME = "school-meals-v10";
+const CACHE_NAME = "school-meals-v9";
 
 function parseDate(value: string) {
   return new Date(Number(value.slice(0, 4)), Number(value.slice(4, 6)) - 1, Number(value.slice(6, 8)));
