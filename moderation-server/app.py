@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 MODEL_ID = os.getenv("MODEL_ID", "hongssi/final_abuse_manual_model")
+MODEL_PATH = os.getenv("MODEL_PATH", "/opt/model")
 MAX_LENGTH = int(os.getenv("MAX_LENGTH", "128"))
 BLOCK_THRESHOLD = float(os.getenv("BLOCK_THRESHOLD", "0.85"))
 REVIEW_THRESHOLD = float(os.getenv("REVIEW_THRESHOLD", "0.55"))
@@ -33,8 +34,8 @@ FALLBACK_LABELS = [
 ]
 IGNORED_LABELS = {"clean", "개인지칭"}
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-model = AutoModelForSequenceClassification.from_pretrained(MODEL_ID)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, local_files_only=True)
+model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH, local_files_only=True)
 model.eval()
 
 

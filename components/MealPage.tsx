@@ -30,6 +30,17 @@ function formatDate(date: Date) {
   return `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
 }
 
+function getSeoulToday(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("year")}${value("month")}${value("day")}`;
+}
+
 function extractMeals(data: unknown): Meal[] | null {
   if (Array.isArray(data)) return data as Meal[];
   if (typeof data === "object" && data !== null && Array.isArray((data as { meals?: unknown }).meals)) {
@@ -45,7 +56,15 @@ export default function MealPage({ initialDate }: MealPageProps) {
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const requestId = useRef(0);
+  const shouldRestoreToday = useRef(mealDate === null);
   const dateString = useMemo(() => formatDate(selectedDate), [selectedDate]);
+
+  useEffect(() => {
+    if (!shouldRestoreToday.current) return;
+    shouldRestoreToday.current = false;
+    const today = getSeoulToday();
+    if (today !== dateString) setSelectedDate(parseDate(today));
+  }, [dateString]);
 
   useEffect(() => { setMealDate(dateString); }, [dateString, setMealDate]);
 

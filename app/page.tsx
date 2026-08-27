@@ -1,5 +1,7 @@
 import MealPage from "@/components/MealPage";
 
+export const dynamic = "force-dynamic";
+
 function getSeoulToday(): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",

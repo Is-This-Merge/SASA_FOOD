@@ -414,6 +414,25 @@ p { margin-top: 0; }
   .review-header-actions { top: 0; left: 0; right: auto; }
 }
 
+@media (hover: none) and (pointer: coarse) {
+  .google-login-button:hover,
+  .theme-toggle:hover { border-color: var(--line); background: var(--surface); }
+  .google-login-button.signed-in:hover { background: transparent; opacity: 1; }
+  .date-arrow:hover { background: transparent; color: var(--muted); }
+  .date-picker-wrapper:hover .date-picker-display { border-color: var(--line); background: var(--accent-soft); color: var(--accent); }
+  .today-button:not(.is-active):hover { border-color: var(--line); background: var(--accent-soft); color: var(--accent); }
+  .today-button.is-active:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+  .meal-review-link:hover { background: var(--accent-soft); color: var(--accent); }
+  .nutrition-toggle:hover { color: var(--muted); }
+  .back-link:hover { color: var(--muted); }
+  .review-title-icon:hover { border-color: var(--line); color: var(--accent); }
+  .rating-stars button:hover { background: transparent; transform: none; }
+  .review-login button:hover,
+  .review-form > button:hover,
+  .review-edit > button:hover { background: var(--accent-strong); }
+  .review-actions button:hover { background: transparent; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

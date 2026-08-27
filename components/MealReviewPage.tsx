@@ -15,6 +15,7 @@ import ThemeToggle from "./ThemeToggle";
 import { useMealDate } from "./MealDateProvider";
 
 type Meal = { date: string; mealType: string; menu: string[]; calorie?: string; nutrition?: string[] };
+let moderationWarmupStarted = false;
 const copy = {
   breakfast: "조식",
   lunch: "중식",
@@ -83,6 +84,24 @@ export default function MealReviewPage({ date, mealType, menuName }: { date: str
 
   useEffect(() => { void loadReviews(); }, [loadReviews]);
   useEffect(() => { setMealDate(date); }, [date, setMealDate]);
+  useEffect(() => {
+    if (!user || moderationWarmupStarted || sessionStorage.getItem("moderation-warmed") === "1") return;
+    moderationWarmupStarted = true;
+    void user.getIdToken()
+      .then((token) => fetch("/api/moderation/warmup", {
+        method: "POST",
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token}` },
+      }))
+      .then((response) => {
+        if (!response.ok) throw new Error(`Warmup failed: ${response.status}`);
+        sessionStorage.setItem("moderation-warmed", "1");
+      })
+      .catch((error) => {
+        moderationWarmupStarted = false;
+        console.warn("[moderation warmup]", error);
+      });
+  }, [user]);
   useEffect(() => {
     let active = true;
     setMealLoading(true);
