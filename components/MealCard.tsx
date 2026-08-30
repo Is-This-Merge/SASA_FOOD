@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 
 type Meal = { date: string; mealType: string; menu: string[]; calorie?: string; nutrition?: string[] };
-const reviewLabel = "식단 리뷰 ›";
 const nutritionLabel = "영양 정보";
 
 const weekdayMealTimes: Record<string, string> = {
@@ -29,14 +28,15 @@ function getMealTime(date: string, mealType: string): string | undefined {
   return (day === 0 || day === 6 ? weekendMealTimes : weekdayMealTimes)[mealType];
 }
 
-export default function MealCard({ meal, online }: { meal: Meal; online: boolean }) {
+export default function MealCard({ meal, online, rating }: { meal: Meal; online: boolean; rating?: string | null }) {
   const [nutritionOpen, setNutritionOpen] = useState(false);
   const mealTime = getMealTime(meal.date, meal.mealType);
+  const displayRating = rating ?? "0.0";
   return <article className="meal-card">
     <div className="meal-header">
       <h2>
         {meal.mealType}
-        {online && <Link className="meal-review-link" href={`/reviews/${meal.date}/${encodeURIComponent(meal.mealType)}`}>{reviewLabel}</Link>}
+        {online && <Link className="meal-review-link" href={`/reviews/${meal.date}/${encodeURIComponent(meal.mealType)}`} aria-label={`${meal.mealType} 식단 리뷰, 평균 별점 ${displayRating}점`}>★ {displayRating}</Link>}
       </h2>
       <div className="meal-meta">
         {mealTime && <time>{mealTime}</time>}

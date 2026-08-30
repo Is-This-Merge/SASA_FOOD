@@ -53,6 +53,7 @@ export default function MealPage({ initialDate }: MealPageProps) {
   const { mealDate, setMealDate } = useMealDate();
   const [selectedDate, setSelectedDate] = useState(() => parseDate(mealDate ?? initialDate));
   const [meals, setMeals] = useState<Meal[]>([]);
+  const [mealRatings, setMealRatings] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const requestId = useRef(0);
@@ -133,6 +134,35 @@ export default function MealPage({ initialDate }: MealPageProps) {
     };
   }, [dateString, loadMeals]);
 
+  useEffect(() => {
+    let active = true;
+    if (offline || meals.length === 0) {
+      setMealRatings({});
+      return () => { active = false; };
+    }
+
+    setMealRatings({});
+    void Promise.all(meals.map(async (meal) => {
+      const mealId = `${meal.date}:${meal.mealType}`;
+      try {
+        const response = await fetch(`/api/reviews?mealId=${encodeURIComponent(mealId)}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Review API error: ${response.status}`);
+        const data = await response.json();
+        const reviews = Array.isArray(data.reviews) ? data.reviews : [];
+        const average = reviews.length
+          ? (reviews.reduce((sum: number, review: { rating?: number }) => sum + (review.rating ?? 5), 0) / reviews.length).toFixed(1)
+          : null;
+        return [mealId, average] as const;
+      } catch {
+        return [mealId, null] as const;
+      }
+    })).then((entries) => {
+      if (active) setMealRatings(Object.fromEntries(entries));
+    });
+
+    return () => { active = false; };
+  }, [meals, offline]);
+
   return (
     <main className="app">
       <header className="header">
@@ -156,6 +186,7 @@ export default function MealPage({ initialDate }: MealPageProps) {
                 key={`${meal.date}-${meal.mealType}`}
                 meal={meal}
                 online={!offline && typeof navigator !== "undefined" && navigator.onLine}
+                rating={mealRatings[`${meal.date}:${meal.mealType}`]}
               />
             ))}
           </section>
