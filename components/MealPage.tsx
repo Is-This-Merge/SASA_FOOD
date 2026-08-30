@@ -56,6 +56,7 @@ export default function MealPage({ initialDate }: MealPageProps) {
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const requestId = useRef(0);
+  const initialLoad = useRef(true);
   const shouldRestoreToday = useRef(mealDate === null);
   const dateString = useMemo(() => formatDate(selectedDate), [selectedDate]);
 
@@ -80,7 +81,7 @@ export default function MealPage({ initialDate }: MealPageProps) {
     }));
   }, []);
 
-  const loadMeals = useCallback(async (date: string) => {
+  const loadMeals = useCallback(async (date: string, revalidate = false) => {
     const id = ++requestId.current;
     setLoading(true);
     const online = navigator.onLine;
@@ -89,11 +90,13 @@ export default function MealPage({ initialDate }: MealPageProps) {
     try {
       const cached = await readCache(date);
       if (cached !== null && id === requestId.current) setMeals(cached);
+      if (cached === null && id === requestId.current) setMeals([]);
+      if (cached !== null && !revalidate) return;
       if (!online) return;
 
       const response = await fetch(`/api/meals?date=${date}`, {
         cache: "no-store",
-        headers: { "X-Meal-Revalidate": "1" },
+        headers: revalidate ? { "X-Meal-Revalidate": "1" } : undefined,
       });
       if (!response.ok) throw new Error(`Meal API error: ${response.status}`);
       const latest = extractMeals(await response.json()) ?? [];
@@ -113,10 +116,14 @@ export default function MealPage({ initialDate }: MealPageProps) {
     }
   }, [readCache, writeCache]);
 
-  useEffect(() => { void loadMeals(dateString); }, [dateString, loadMeals]);
+  useEffect(() => {
+    const revalidate = initialLoad.current;
+    initialLoad.current = false;
+    void loadMeals(dateString, revalidate);
+  }, [dateString, loadMeals]);
 
   useEffect(() => {
-    const onOnline = () => void loadMeals(dateString);
+    const onOnline = () => void loadMeals(dateString, true);
     const onOffline = () => setOffline(true);
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
