@@ -38,7 +38,9 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (url.pathname === "/api/meals" && url.searchParams.has("date")) {
-    event.respondWith(handleMealRequest(request));
+    event.respondWith(request.headers.get("X-Meal-Revalidate") === "1"
+      ? handleMealRevalidation(request)
+      : handleMealRequest(request));
   } else if (request.mode === "navigate") {
     event.respondWith(handleNavigationRequest(request));
   } else if (url.pathname.startsWith("/_next/static/") || STATIC_CACHE.includes(url.pathname)) {
@@ -90,6 +92,36 @@ async function handleMealRequest(request) {
   }
 }
 
+async function handleMealRevalidation(request) {
+  const key = `revalidate:${request.url}`;
+  const pending = pendingMealRequests.get(key);
+  if (pending) return (await pending).clone();
+
+  const responsePromise = (async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const cacheKey = new Request(request.url);
+    try {
+      const response = await fetch(request);
+      if (response.ok) {
+        await cache.put(cacheKey, response.clone());
+        return response;
+      }
+      return (await cache.match(cacheKey)) || response;
+    } catch (error) {
+      const cachedResponse = await cache.match(cacheKey);
+      if (cachedResponse) return cachedResponse;
+      throw error;
+    }
+  })();
+
+  pendingMealRequests.set(key, responsePromise);
+  try {
+    return (await responsePromise).clone();
+  } finally {
+    pendingMealRequests.delete(key);
+  }
+}
+
 self.addEventListener("message", (event) => {
   if (event.data?.type === "PREFETCH_DATE_RANGE" && Array.isArray(event.data.dates)) {
     event.waitUntil(prefetchMeals(event.data.dates));
@@ -108,7 +140,7 @@ async function prefetchMeals(dates) {
 
   await Promise.all(dates.map(async (date) => {
     try {
-      const response = await handleMealRequest(new Request(new URL(`/api/meals?date=${date}`, self.location.origin)));
+      const response = await handleMealRevalidation(new Request(new URL(`/api/meals?date=${date}`, self.location.origin)));
       if (!response.ok) console.warn(`Meal API failed: ${date}`, response.status);
     } catch (error) {
       console.error(`Meal prefetch failed: ${date}`, error);

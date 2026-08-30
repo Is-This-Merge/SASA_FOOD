@@ -91,7 +91,10 @@ export default function MealPage({ initialDate }: MealPageProps) {
       if (cached !== null && id === requestId.current) setMeals(cached);
       if (!online) return;
 
-      const response = await fetch(`/api/meals?date=${date}`, { cache: "no-store" });
+      const response = await fetch(`/api/meals?date=${date}`, {
+        cache: "no-store",
+        headers: { "X-Meal-Revalidate": "1" },
+      });
       if (!response.ok) throw new Error(`Meal API error: ${response.status}`);
       const latest = extractMeals(await response.json()) ?? [];
       if (id === requestId.current) {

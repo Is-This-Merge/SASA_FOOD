@@ -105,7 +105,10 @@ export default function MealReviewPage({ date, mealType, menuName }: { date: str
   useEffect(() => {
     let active = true;
     setMealLoading(true);
-    void fetch(`/api/meals?date=${date}`, { cache: "no-store" })
+    void fetch(`/api/meals?date=${date}`, {
+      cache: "no-store",
+      headers: { "X-Meal-Revalidate": "1" },
+    })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Meal API error: ${response.status}`);
         const data = await response.json();
