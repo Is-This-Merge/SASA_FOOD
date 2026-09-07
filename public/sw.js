@@ -140,10 +140,24 @@ async function prefetchMeals(dates) {
 
   await Promise.all(dates.map(async (date) => {
     try {
-      const response = await handleMealRevalidation(new Request(new URL(`/api/meals?date=${date}`, self.location.origin)));
+      const request = new Request(new URL(`/api/meals?date=${date}`, self.location.origin));
+      const cachedResponse = await cache.match(request);
+      if (cachedResponse && await hasMeals(cachedResponse)) return;
+
+      const response = await handleMealRevalidation(request);
       if (!response.ok) console.warn(`Meal API failed: ${date}`, response.status);
     } catch (error) {
       console.error(`Meal prefetch failed: ${date}`, error);
     }
   }));
+}
+
+async function hasMeals(response) {
+  try {
+    const data = await response.clone().json();
+    const meals = Array.isArray(data) ? data : data?.meals;
+    return Array.isArray(meals) && meals.length > 0;
+  } catch {
+    return false;
+  }
 }

@@ -22,18 +22,25 @@ function formatDate(date: Date): string {
   return `${year}${month}${day}`;
 }
 
-function getTwoWeekRange(date: Date): string[] {
-  return Array.from({ length: 29 }, (_, index) => {
+function getManagedDateRange(date: Date): string[] {
+  const nearbyDates = Array.from({ length: 13 }, (_, index) => {
     const target = new Date(date);
-    target.setDate(target.getDate() + index - 14);
+    target.setDate(target.getDate() + index - 5);
     return formatDate(target);
   });
+
+  const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const monthDates = Array.from({ length: lastDayOfMonth }, (_, index) =>
+    formatDate(new Date(date.getFullYear(), date.getMonth(), index + 1))
+  );
+
+  return [...new Set([...monthDates, ...nearbyDates])].sort();
 }
 
 export function prefetchNearbyMeals(): void {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
-  const dates = getTwoWeekRange(getSeoulToday());
+  const dates = getManagedDateRange(getSeoulToday());
 
   const sendMessage = (worker: ServiceWorker | null) => {
     worker?.postMessage({

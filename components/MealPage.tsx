@@ -57,7 +57,6 @@ export default function MealPage({ initialDate }: MealPageProps) {
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const requestId = useRef(0);
-  const initialLoad = useRef(true);
   const shouldRestoreToday = useRef(mealDate === null);
   const dateString = useMemo(() => formatDate(selectedDate), [selectedDate]);
 
@@ -117,14 +116,10 @@ export default function MealPage({ initialDate }: MealPageProps) {
     }
   }, [readCache, writeCache]);
 
-  useEffect(() => {
-    const revalidate = initialLoad.current;
-    initialLoad.current = false;
-    void loadMeals(dateString, revalidate);
-  }, [dateString, loadMeals]);
+  useEffect(() => { void loadMeals(dateString); }, [dateString, loadMeals]);
 
   useEffect(() => {
-    const onOnline = () => void loadMeals(dateString, true);
+    const onOnline = () => void loadMeals(dateString);
     const onOffline = () => setOffline(true);
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
